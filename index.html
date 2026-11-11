@@ -1,0 +1,3380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0F172A">
+  <title>Lavadero · Autos &amp; Motos</title>
+
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon.svg">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- QRCode Library (local con fallback CDN) -->
+  <script src="./qrcode.min.js"></script>
+  <script>
+    if (typeof QRCode === 'undefined') {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      document.head.appendChild(s);
+    }
+  </script>
+  <!-- Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #F4F6F8;
+      color: #0F172A;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Native <dialog> modal scroll containment (modern-web-guidance) */
+    dialog {
+      margin: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      max-width: 100vw;
+      max-height: 100dvh;
+      color: inherit;
+    }
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
+    dialog::backdrop {
+      background: rgba(15, 23, 42, 0.58);
+      overflow: hidden;
+      overscroll-behavior: contain;
+    }
+    @media (max-width: 639px) {
+      dialog.sheet-dialog {
+        margin-bottom: 0;
+        width: 100%;
+        max-width: 100vw;
+      }
+    }
+
+    /* Form validation deferred until interaction */
+    :is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) {
+      border-color: #DC2626 !important;
+      background-color: #FEF2F2 !important;
+    }
+    :is(input, select, textarea):is(:user-valid, .user-valid-fallback) {
+      border-color: #0284C7;
+    }
+    .field-error-msg {
+      display: none;
+      color: #DC2626;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      font-weight: 500;
+    }
+    :is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) + .field-error-msg {
+      display: block;
+    }
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      white-space: nowrap !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <!-- ========================================================= -->
+  <!-- VISTA 1: PANEL DE ADMINISTRACIÓN DEL LAVADERO (DUEÑO)     -->
+  <!-- ========================================================= -->
+  <div id="adminView" class="min-h-screen flex flex-col max-w-3xl mx-auto pb-24">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="headerLogoWrap" class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
+            <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 id="headerBizName" class="text-base sm:text-lg font-extrabold text-slate-900 truncate leading-tight">Lavadero · Autos &amp; Motos</h1>
+            <p id="headerBizSub" class="text-[11px] text-slate-500 font-medium truncate">Panel Operativo &amp; Turnos</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onclick="openWelcomeModal()"
+            class="px-2.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-colors flex items-center gap-1"
+            title="Enviar mensaje de bienvenida y links por WhatsApp"
+          >
+            <span>Bienvenida</span>
+          </button>
+
+          <button
+            type="button"
+            onclick="openOwnerAgendaModal()"
+            class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition-colors flex items-center gap-1"
+            title="Control manual de agenda y turnos"
+          >
+            <span>📅</span>
+            <span class="hidden sm:inline">Agenda</span>
+          </button>
+
+          <button
+            type="button"
+            onclick="openBackupModal()"
+            class="relative w-9 h-9 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 flex items-center justify-center transition-colors"
+            title="Copia de seguridad en Google Drive y JSON"
+            aria-label="Copia de seguridad"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span id="backupStatusDot" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+          </button>
+
+          <button
+            type="button"
+            id="pinLockHeaderBtn"
+            onclick="toggleOwnerLock()"
+            class="hidden px-2.5 py-2 rounded-xl border text-xs font-bold transition-colors items-center gap-1"
+            title="Estado de bloqueo PIN del dueño"
+          >
+            <span id="pinLockHeaderIcon">🔒</span>
+          </button>
+
+          <button
+            type="button"
+            onclick="openSettingsWithGuard()"
+            class="w-9 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center transition-colors"
+            title="Configuración del lavadero, horarios, tarifas y seguridad"
+            aria-label="Configuración"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Body -->
+    <main class="px-4 pt-4 space-y-4">
+
+      <!-- Barra de Acciones Principales + Resumen -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-white border border-slate-200 rounded-2xl p-3">
+          <p class="text-[11px] font-semibold text-slate-500">Clientes / Vehículos</p>
+          <p id="statTotalClients" class="text-xl font-extrabold text-slate-900 mt-0.5">0</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-3">
+          <p class="text-[11px] font-semibold text-slate-500">Lavados hoy</p>
+          <p id="statTodayWashes" class="text-xl font-extrabold text-sky-700 mt-0.5">0</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-3">
+          <p class="text-[11px] font-semibold text-slate-500">Sellos por vencer</p>
+          <p id="statExpiring" class="text-xl font-extrabold text-amber-600 mt-0.5">0</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-3">
+          <p class="text-[11px] font-semibold text-slate-500">Saldo a cobrar</p>
+          <p id="statTotalDebt" class="text-xl font-extrabold text-slate-900 mt-0.5">$ 0</p>
+        </div>
+      </section>
+
+      <!-- Tarjeta de Accesos Rápidos (Turnero / Tarifas / QR Cobro Libre) -->
+      <section class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p class="text-xs font-bold text-slate-900">Turnero Online &amp; Cobro Rápido</p>
+            <p class="text-[11px] text-slate-500" id="capacitySummaryText">Capacidad: 1 vehículo por horario</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="openClientModal()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors">
+              + Nuevo Cliente
+            </button>
+            <button type="button" onclick="openQRModal(null)" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors">
+              Cobro QR
+            </button>
+            <button type="button" onclick="openServicesWithGuard()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold transition-colors">
+              Tarifas
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="copyBookingLink()" class="flex-1 min-w-[140px] py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-colors">
+            Copiar Link del Turnero
+          </button>
+          <button type="button" onclick="openBookingPreview()" class="py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-colors">
+            Vista Turnero
+          </button>
+          <button type="button" onclick="openTurneroQRModal()" class="py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-colors">
+            QR Turnero
+          </button>
+        </div>
+      </section>
+
+      <!-- Buscador y Filtros Limpios -->
+      <section class="space-y-2.5">
+        <div class="relative">
+          <input
+            type="search"
+            id="searchInput"
+            oninput="renderClientsList()"
+            placeholder="Buscar por nombre, patente, modelo o teléfono..."
+            class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-sky-600 focus:outline-none text-sm text-slate-900 placeholder-slate-400"
+          >
+          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5" id="filterPills">
+          <button type="button" data-filter="all" onclick="setFilter('all')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-900 text-white border border-slate-900">Todos</button>
+          <button type="button" data-filter="Auto" onclick="setFilter('Auto')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200">Autos</button>
+          <button type="button" data-filter="Moto" onclick="setFilter('Moto')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200">Motos</button>
+          <button type="button" data-filter="Camioneta" onclick="setFilter('Camioneta')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200">Camionetas</button>
+          <button type="button" data-filter="debt" onclick="setFilter('debt')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200">Con deuda</button>
+          <button type="button" data-filter="expiring" onclick="setFilter('expiring')" class="filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200">Sellos por vencer</button>
+        </div>
+      </section>
+
+      <!-- Listado de Clientes -->
+      <section id="clientsListContainer" class="space-y-3"></section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 2: TURNERO ONLINE PÚBLICO (?reservar=1 / ?booking)  -->
+  <!-- ========================================================= -->
+  <div id="clientBookingView" class="hidden min-h-screen flex flex-col max-w-lg mx-auto px-4 py-6 space-y-4">
+    <div id="bookingPreviewBanner" class="hidden bg-slate-900 text-white px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs font-semibold">
+      <span>Vista previa del Turnero Online</span>
+      <button type="button" onclick="exitBookingPreview()" class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 font-bold">Volver al Panel</button>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-5">
+      <!-- Encabezado del Lavadero -->
+      <div class="flex items-center gap-3.5 pb-4 border-b border-slate-100">
+        <div id="bookingLogoContainer" class="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center overflow-hidden border border-slate-200 shrink-0">
+          <svg class="w-7 h-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <span class="inline-block text-[10px] uppercase tracking-wider font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">Reserva de Turno Online</span>
+          <h1 id="bookingBizTitle" class="text-lg font-extrabold text-slate-900 mt-1 truncate">Lavadero · Autos &amp; Motos</h1>
+          <p id="bookingBizAddress" class="text-xs text-slate-500 truncate"></p>
+        </div>
+      </div>
+
+      <!-- Estado Cerrado Global -->
+      <div id="bookingDisabledState" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 text-center space-y-2">
+        <p class="text-sm font-bold text-slate-800">Turnero momentáneamente pausado</p>
+        <p class="text-xs text-slate-500">Consultá disponibilidad directamente por WhatsApp.</p>
+      </div>
+
+      <!-- Formulario del Turnero -->
+      <form id="bookingForm" class="space-y-4" novalidate onsubmit="submitClientBooking(event)">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="bookingClientName" class="block text-xs font-bold text-slate-700 mb-1">Tu nombre *</label>
+            <input type="text" id="bookingClientName" required minlength="2" data-error="err-booking-name" placeholder="Ej. Martín López" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+            <div id="err-booking-name" class="field-error-msg">Ingresá tu nombre (mínimo 2 letras).</div>
+          </div>
+          <div>
+            <label for="bookingClientPhone" class="block text-xs font-bold text-slate-700 mb-1">Tu WhatsApp *</label>
+            <input type="tel" id="bookingClientPhone" required minlength="8" data-error="err-booking-phone" placeholder="Ej. 1134567890" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+            <div id="err-booking-phone" class="field-error-msg">Ingresá un número de WhatsApp válido.</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="bookingVehicleModel" class="block text-xs font-bold text-slate-700 mb-1">Vehículo / Modelo</label>
+            <input type="text" id="bookingVehicleModel" placeholder="Ej. Cronos / Wave 110" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+          <div>
+            <label for="bookingPlate" class="block text-xs font-bold text-slate-700 mb-1">Patente (opcional)</label>
+            <input type="text" id="bookingPlate" maxlength="10" placeholder="Ej. AB123CD" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm uppercase focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Tipo de Vehículo -->
+        <div>
+          <span class="block text-xs font-bold text-slate-700 mb-1.5">1. Tipo de vehículo</span>
+          <div class="grid grid-cols-3 gap-2" id="bookingVehicleTypeGroup">
+            <button type="button" onclick="selectBookingVehicleType('Moto')" data-vtype="Moto" class="vtype-btn py-2.5 px-2 rounded-xl border text-xs font-bold transition-colors bg-white border-slate-200 text-slate-700">🏍️ Moto</button>
+            <button type="button" onclick="selectBookingVehicleType('Auto')" data-vtype="Auto" class="vtype-btn py-2.5 px-2 rounded-xl border text-xs font-bold transition-colors bg-sky-600 border-sky-600 text-white">🚗 Auto</button>
+            <button type="button" onclick="selectBookingVehicleType('Camioneta')" data-vtype="Camioneta" class="vtype-btn py-2.5 px-2 rounded-xl border text-xs font-bold transition-colors bg-white border-slate-200 text-slate-700">🚙 Camioneta</button>
+          </div>
+        </div>
+
+        <!-- Servicio / Tarifa -->
+        <div>
+          <span class="block text-xs font-bold text-slate-700 mb-1.5">2. Elegí el lavado / servicio</span>
+          <div id="bookingServicesContainer" class="space-y-1.5"></div>
+        </div>
+
+        <!-- Selector de Día -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-slate-700">3. Elegí el día</span>
+            <span id="bookingDayScheduleHint" class="text-[11px] text-slate-500"></span>
+          </div>
+          <div id="bookingDaysContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+        </div>
+
+        <!-- Selector de Horario -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-slate-700">4. Horarios disponibles (24hs)</span>
+            <button type="button" onclick="refreshBookingDay()" class="text-[11px] font-bold text-sky-600 hover:underline">Actualizar</button>
+          </div>
+          <div id="bookingHoursContainer" class="grid grid-cols-3 gap-2"></div>
+        </div>
+
+        <!-- Resumen -->
+        <div id="bookingSummaryBox" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 space-y-1">
+          <p class="font-bold text-slate-900">Resumen de tu turno</p>
+          <p id="bookingSummaryText" class="text-slate-600">Seleccioná servicio, día y horario libre.</p>
+        </div>
+
+        <button type="submit" id="btnConfirmClientBooking" class="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm transition-colors">
+          Confirmar Turno y Avisar por WhatsApp
+        </button>
+      </form>
+
+      <!-- Comprobante luego de confirmar -->
+      <div id="bookingConfirmedCard" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3 text-center">
+        <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto font-bold">✓</div>
+        <h2 class="text-base font-extrabold text-emerald-950">Turno reservado y bloqueado</h2>
+        <p id="bookingConfirmedDetails" class="text-xs text-emerald-900 leading-relaxed"></p>
+        <div class="flex flex-col gap-2 pt-1">
+          <a id="bookingConfirmedWaBtn" href="#" target="_blank" rel="noopener" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs">
+            Enviar Confirmación por WhatsApp
+          </a>
+          <button type="button" onclick="resetBookingFormAfterConfirm()" class="w-full py-2 px-4 rounded-xl bg-white border border-emerald-200 text-emerald-800 font-bold text-xs">
+            Reservar otro turno
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- VISTA 3: PASE DIGITAL DE FIDELIDAD (?fidelidad=1)        -->
+  <!-- ========================================================= -->
+  <div id="loyaltyPassView" class="hidden min-h-screen flex flex-col justify-center max-w-md mx-auto px-4 py-8">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+      <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+        <div id="passLogoContainer" class="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center overflow-hidden border border-slate-200 shrink-0">
+          <svg class="w-6 h-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-sky-700">Tarjeta de Fidelidad</span>
+          <h1 id="passBizName" class="text-lg font-extrabold text-slate-900 truncate">Lavadero</h1>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <p class="text-xs text-slate-500">Cliente</p>
+        <p id="passClientName" class="text-xl font-extrabold text-slate-900">-</p>
+        <p id="passVehicleInfo" class="text-xs font-semibold text-slate-600">-</p>
+      </div>
+
+      <!-- Sellos -->
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-700">Tus sellos acumulados</span>
+          <span id="passStampsCounter" class="text-xs font-extrabold text-sky-700">0 / 6</span>
+        </div>
+        <div id="passStampsGrid" class="grid grid-cols-5 gap-2"></div>
+        <p id="passRewardText" class="text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200"></p>
+      </div>
+
+      <!-- Vigencia / Caducidad -->
+      <div id="passExpiryBox" class="rounded-xl p-3 border text-xs font-semibold"></div>
+
+      <div class="flex flex-col gap-2">
+        <a id="passBookBtn" href="#" class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-center font-bold text-xs">
+          Reservar Próximo Turno Online
+        </a>
+        <a id="passWaBtn" href="#" target="_blank" rel="noopener" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs">
+          Escribir al Lavadero por WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CLIENTE / VEHÍCULO (AGREGAR O EDITAR)              -->
+  <!-- ========================================================= -->
+  <dialog id="clientModal" closedby="any" aria-labelledby="clientModalTitle" class="sheet-dialog w-full max-w-md">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 id="clientModalTitle" class="text-base font-extrabold text-slate-900">Nuevo Cliente</h2>
+        <button type="button" onclick="closeDialog('clientModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+      <form id="clientForm" class="p-5 space-y-3.5 overflow-y-auto" novalidate onsubmit="saveClientForm(event)">
+        <input type="hidden" id="editClientId">
+
+        <div>
+          <label for="cName" class="block text-xs font-bold text-slate-700 mb-1">Nombre del cliente *</label>
+          <input type="text" id="cName" required minlength="2" data-error="err-c-name" placeholder="Ej. Lucas Fernández" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          <div id="err-c-name" class="field-error-msg">Ingresá el nombre del cliente.</div>
+        </div>
+
+        <div>
+          <label for="cPhone" class="block text-xs font-bold text-slate-700 mb-1">WhatsApp *</label>
+          <input type="tel" id="cPhone" required minlength="8" data-error="err-c-phone" placeholder="Ej. 1134567890" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          <div id="err-c-phone" class="field-error-msg">Ingresá un número válido.</div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label for="cVehicleType" class="block text-xs font-bold text-slate-700 mb-1">Tipo</label>
+            <select id="cVehicleType" class="w-full px-2.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+              <option value="Auto">Auto</option>
+              <option value="Moto">Moto</option>
+              <option value="Camioneta">Camioneta</option>
+            </select>
+          </div>
+          <div>
+            <label for="cVehicleModel" class="block text-xs font-bold text-slate-700 mb-1">Modelo</label>
+            <input type="text" id="cVehicleModel" placeholder="Ej. Cronos" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+          <div>
+            <label for="cPlate" class="block text-xs font-bold text-slate-700 mb-1">Patente</label>
+            <input type="text" id="cPlate" maxlength="10" placeholder="AB123CD" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm uppercase focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="cStamps" class="block text-xs font-bold text-slate-700 mb-1">Sellos actuales</label>
+            <input type="number" id="cStamps" min="0" max="50" value="0" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+          <div>
+            <label for="cDebt" class="block text-xs font-bold text-slate-700 mb-1">Saldo pendiente (ARS $)</label>
+            <input type="number" id="cDebt" min="0" step="100" value="0" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label for="cNotes" class="block text-xs font-bold text-slate-700 mb-1">Observaciones (ej. cuidado especial)</label>
+          <textarea id="cNotes" rows="2" placeholder="Sin silicona en plásticos, tapizado claro, etc." class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none"></textarea>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeDialog('clientModal')" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">Cancelar</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">Guardar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: REGISTRAR LAVADO HOY                               -->
+  <!-- ========================================================= -->
+  <dialog id="washModal" closedby="any" aria-labelledby="washModalTitle" class="w-full max-w-sm">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl p-5 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h2 id="washModalTitle" class="text-base font-extrabold text-slate-900">Registrar Lavado Hoy</h2>
+          <p id="washClientSubtitle" class="text-xs text-slate-500 mt-0.5">-</p>
+        </div>
+        <button type="button" onclick="closeDialog('washModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div id="washExpiryWarning" class="hidden bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-2.5 text-xs font-semibold"></div>
+
+      <div class="space-y-3">
+        <div>
+          <label for="washServiceSelect" class="block text-xs font-bold text-slate-700 mb-1">Servicio realizado</label>
+          <select id="washServiceSelect" onchange="onWashServiceChange()" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none"></select>
+        </div>
+        <div>
+          <label for="washPriceInput" class="block text-xs font-bold text-slate-700 mb-1">Importe (ARS $)</label>
+          <input type="number" id="washPriceInput" min="0" step="100" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold focus:bg-white focus:border-sky-600 focus:outline-none">
+        </div>
+        <div class="space-y-1.5 pt-1">
+          <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+            <input type="checkbox" id="washAddStampCheck" checked class="w-4 h-4 accent-sky-600">
+            <span>Sumar +1 sello de fidelidad (y renovar vigencia)</span>
+          </label>
+          <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+            <input type="checkbox" id="washMarkAsDebtCheck" class="w-4 h-4 accent-rose-600">
+            <span>Dejar pendiente de pago (cargar a deuda)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="closeDialog('washModal')" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold">Cancelar</button>
+        <button type="button" onclick="confirmWash()" class="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold">Confirmar Lavado</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: BIENVENIDA & ENLACES POR WHATSAPP                  -->
+  <!-- ========================================================= -->
+  <dialog id="welcomeModal" closedby="any" aria-labelledby="welcomeModalTitle" class="sheet-dialog w-full max-w-md">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 id="welcomeModalTitle" class="text-base font-extrabold text-slate-900">Bienvenida &amp; Enlaces WhatsApp</h2>
+          <p class="text-[11px] text-slate-500">Mensaje limpio sin emojis (cero rombos) con tus links</p>
+        </div>
+        <button type="button" onclick="closeDialog('welcomeModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="p-5 space-y-3.5 overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label for="welcomeTargetName" class="block text-xs font-bold text-slate-700 mb-1">Nombre (opcional)</label>
+            <input type="text" id="welcomeTargetName" oninput="refreshWelcomePreview()" placeholder="Ej. Juan" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+          <div>
+            <label for="welcomeTargetPhone" class="block text-xs font-bold text-slate-700 mb-1">WhatsApp destino (opcional)</label>
+            <input type="tel" id="welcomeTargetPhone" placeholder="Vacío = elegir contacto" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:bg-white focus:border-sky-600 focus:outline-none">
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+          <input type="checkbox" id="welcomeIncludePrices" checked onchange="refreshWelcomePreview()" class="w-4 h-4 accent-sky-600">
+          <span>Incluir lista resumida de tarifas vigentes en el mensaje</span>
+        </label>
+
+        <div>
+          <label for="welcomePreviewBox" class="block text-xs font-bold text-slate-700 mb-1">Vista previa del texto a enviar</label>
+          <textarea id="welcomePreviewBox" rows="7" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-800 focus:bg-white focus:border-sky-600 focus:outline-none"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="copyWelcomeMessage()" class="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-bold">
+            Copiar Mensaje
+          </button>
+          <button type="button" onclick="sendWelcomeWhatsApp()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+            Abrir en WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: COBRO QR / QR TURNERO                              -->
+  <!-- ========================================================= -->
+  <dialog id="qrModal" closedby="any" aria-labelledby="qrModalTitle" class="w-full max-w-sm">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl p-5 space-y-4 text-center">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 text-left">
+        <div>
+          <h2 id="qrModalTitle" class="text-base font-extrabold text-slate-900">Cobro con QR</h2>
+          <p id="qrModalSubtitle" class="text-[11px] text-slate-500">Transferencia directa sin comisiones</p>
+        </div>
+        <button type="button" onclick="closeDialog('qrModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div id="qrAmountControls" class="text-left space-y-2">
+        <label for="qrAmountInput" class="block text-xs font-bold text-slate-700">Monto a cobrar (ARS $, opcional)</label>
+        <div class="flex gap-2">
+          <input type="number" id="qrAmountInput" min="0" step="100" oninput="renderPaymentQRCode()" placeholder="Ej. 16000" class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold focus:bg-white focus:border-sky-600 focus:outline-none">
+          <button type="button" id="qrClearDebtBtn" onclick="clearClientDebtFromQR()" class="hidden px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Marcar Pagado</button>
+        </div>
+      </div>
+
+      <div class="flex justify-center py-2">
+        <div class="p-3 bg-white border border-slate-200 rounded-2xl inline-flex items-center justify-center">
+          <div id="qrCodeBox" class="w-[210px] h-[210px] flex items-center justify-center"></div>
+        </div>
+      </div>
+
+      <div id="qrAliasBox" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-left">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <p class="text-[10px] uppercase font-bold text-slate-500">Alias / CVU</p>
+            <p id="qrAliasText" class="text-xs font-extrabold text-slate-900 select-all">-</p>
+          </div>
+          <button type="button" onclick="copyQRAlias()" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold">Copiar</button>
+        </div>
+        <p id="qrHolderText" class="text-[11px] text-slate-600"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CONTROL MANUAL DE AGENDA Y TURNOS (DUEÑO)          -->
+  <!-- ========================================================= -->
+  <dialog id="ownerAgendaModal" closedby="any" aria-labelledby="ownerAgendaTitle" class="sheet-dialog w-full max-w-lg">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 id="ownerAgendaTitle" class="text-base font-extrabold text-slate-900">📅 Agenda y Control de Turnos</h2>
+          <p id="ownerAgendaCapInfo" class="text-[11px] text-slate-500">Bloqueá, liberá o cargá turnos manualmente</p>
+        </div>
+        <button type="button" onclick="closeDialog('ownerAgendaModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="p-4 space-y-3 overflow-y-auto">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-700">Seleccioná un día</span>
+          <button type="button" onclick="refreshOwnerAgendaDay()" class="text-xs font-bold text-sky-600 hover:underline">Sincronizar nube</button>
+        </div>
+        <div id="ownerAgendaDaysContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+        <!-- Estado del Día Completo -->
+        <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div>
+            <p id="ownerAgendaDayStatusLabel" class="text-xs font-extrabold text-slate-900">Día Abierto</p>
+            <p id="ownerAgendaDayScheduleLabel" class="text-[11px] text-slate-500"></p>
+          </div>
+          <button type="button" id="btnToggleCloseWholeDay" onclick="toggleCloseWholeDay()" class="px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors">
+            Cerrar día
+          </button>
+        </div>
+
+        <!-- Carga rápida manual -->
+        <div class="bg-sky-50/70 border border-sky-200 rounded-xl p-3 space-y-2">
+          <p class="text-[11px] font-bold text-sky-900">Datos para agendar manualmente en cualquier horario libre:</p>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="text" id="manualBookName" placeholder="Nombre *" class="px-2.5 py-1.5 rounded-lg bg-white border border-sky-200 text-xs">
+            <input type="text" id="manualBookVehicle" placeholder="Auto/Moto" class="px-2.5 py-1.5 rounded-lg bg-white border border-sky-200 text-xs">
+            <input type="text" id="manualBookPlate" placeholder="Patente" class="px-2.5 py-1.5 rounded-lg bg-white border border-sky-200 text-xs uppercase">
+          </div>
+        </div>
+
+        <!-- Lista de Horarios -->
+        <div id="ownerAgendaHoursList" class="space-y-2"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: TARIFAS Y SERVICIOS EDITABLES                      -->
+  <!-- ========================================================= -->
+  <dialog id="servicesModal" closedby="any" aria-labelledby="servicesModalTitle" class="sheet-dialog w-full max-w-lg">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 id="servicesModalTitle" class="text-base font-extrabold text-slate-900">Tarifas y Servicios (ARS $)</h2>
+          <p class="text-[11px] text-slate-500">Editá precios, visibilidad pública o agregá ítems</p>
+        </div>
+        <button type="button" onclick="closeDialog('servicesModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="p-4 space-y-4 overflow-y-auto">
+        <label class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer">
+          <div>
+            <span class="block text-xs font-bold text-slate-900">Mostrar precios en el Turnero Online</span>
+            <span class="block text-[11px] text-slate-500">Si lo desactivás, el cliente elige el servicio sin ver tarifas públicas</span>
+          </div>
+          <input type="checkbox" id="togglePublicPricesInModal" onchange="togglePublicPrices(this.checked)" class="w-4 h-4 accent-sky-600">
+        </label>
+
+        <!-- Agregar servicio -->
+        <form onsubmit="addNewService(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+          <p class="text-xs font-bold text-slate-800">Agregar nuevo servicio / tarifa</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="text" id="newSrvName" required placeholder="Ej. Pulido Ópticas" class="sm:col-span-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs">
+            <select id="newSrvType" class="px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs">
+              <option value="Auto">Auto</option>
+              <option value="Moto">Moto</option>
+              <option value="Camioneta">Camioneta</option>
+              <option value="Todos">Todos</option>
+            </select>
+          </div>
+          <div class="flex gap-2">
+            <input type="number" id="newSrvPrice" required min="0" step="100" placeholder="Precio ARS $" class="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-bold">
+            <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">Agregar</button>
+          </div>
+        </form>
+
+        <div id="servicesCrudList" class="space-y-2"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: CONFIGURACIÓN DEL LAVADERO (IDENTIDAD/HORARIOS/PIN)-->
+  <!-- ========================================================= -->
+  <dialog id="settingsModal" closedby="any" aria-labelledby="settingsModalTitle" class="sheet-dialog w-full max-w-xl">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 id="settingsModalTitle" class="text-base font-extrabold text-slate-900">Configuración del Lavadero</h2>
+          <p class="text-[11px] text-slate-500">Marca, horarios diarios, boxes, fidelidad y seguridad</p>
+        </div>
+        <button type="button" onclick="closeDialog('settingsModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <!-- Pestañas internas -->
+      <div class="px-4 pt-2 border-b border-slate-200 flex gap-2 overflow-x-auto no-scrollbar bg-slate-50">
+        <button type="button" onclick="switchSettingsTab('general')" data-stab="general" class="stab-btn px-3 py-2 text-xs font-bold border-b-2 border-sky-600 text-sky-700 whitespace-nowrap">Local &amp; Cobro</button>
+        <button type="button" onclick="switchSettingsTab('schedule')" data-stab="schedule" class="stab-btn px-3 py-2 text-xs font-bold border-b-2 border-transparent text-slate-600 whitespace-nowrap">Horarios &amp; Boxes</button>
+        <button type="button" onclick="switchSettingsTab('loyalty')" data-stab="loyalty" class="stab-btn px-3 py-2 text-xs font-bold border-b-2 border-transparent text-slate-600 whitespace-nowrap">Fidelidad &amp; WhatsApp</button>
+        <button type="button" onclick="switchSettingsTab('security')" data-stab="security" class="stab-btn px-3 py-2 text-xs font-bold border-b-2 border-transparent text-slate-600 whitespace-nowrap">Seguridad PIN</button>
+      </div>
+
+      <form id="settingsForm" class="p-5 overflow-y-auto space-y-4 flex-1" onsubmit="saveSettingsForm(event)">
+        <!-- TAB 1: LOCAL & COBRO -->
+        <div id="stab-general" class="stab-panel space-y-4">
+          <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
+            <div id="settingsLogoPreview" class="w-16 h-16 rounded-xl bg-slate-900 text-white flex items-center justify-center overflow-hidden border border-slate-200 shrink-0">
+              <span class="text-xs font-bold text-slate-400">LOGO</span>
+            </div>
+            <div class="space-y-1.5 flex-1">
+              <p class="text-xs font-bold text-slate-800">Logo del Lavadero</p>
+              <div class="flex flex-wrap gap-2">
+                <label class="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-800 cursor-pointer">
+                  Subir Logo
+                  <input type="file" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+                </label>
+                <button type="button" onclick="removeLogo()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50">Quitar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="setBizName" class="block text-xs font-bold text-slate-700 mb-1">Nombre del Lavadero *</label>
+              <input type="text" id="setBizName" required class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+            <div>
+              <label for="setBizId" class="block text-xs font-bold text-slate-700 mb-1">Código Único (Link Turnero)</label>
+              <input type="text" id="setBizId" required pattern="[a-z0-9\-]{3,32}" title="Solo minúsculas, números y guiones" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="setBizAddress" class="block text-xs font-bold text-slate-700 mb-1">Dirección del local</label>
+              <input type="text" id="setBizAddress" placeholder="Ej. Av. San Martín 850" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+            <div>
+              <label for="setWaPhone" class="block text-xs font-bold text-slate-700 mb-1">WhatsApp del Lavadero</label>
+              <input type="tel" id="setWaPhone" placeholder="Ej. 5491134567890" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+            </div>
+          </div>
+
+          <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3.5 space-y-3">
+            <p class="text-xs font-extrabold text-emerald-950 uppercase tracking-wider">Datos de Cobro QR / Alias</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="setAlias" class="block text-xs font-bold text-slate-700 mb-1">Alias o CVU / CBU</label>
+                <input type="text" id="setAlias" class="w-full px-3 py-2 rounded-xl bg-white border border-emerald-200 text-sm">
+              </div>
+              <div>
+                <label for="setHolder" class="block text-xs font-bold text-slate-700 mb-1">Nombre del Titular</label>
+                <input type="text" id="setHolder" class="w-full px-3 py-2 rounded-xl bg-white border border-emerald-200 text-sm">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: HORARIOS & BOXES -->
+        <div id="stab-schedule" class="stab-panel hidden space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
+            <label class="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+              <input type="checkbox" id="setBookingEnabled" class="w-4 h-4 accent-sky-600">
+              <span>Turnero Online Activo</span>
+            </label>
+            <div>
+              <label for="setCapacity" class="block text-[11px] font-bold text-slate-700 mb-1">Vehículos a la vez (Boxes)</label>
+              <select id="setCapacity" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-bold">
+                <option value="1">1 vehículo por turno</option>
+                <option value="2">2 vehículos a la vez</option>
+                <option value="3">3 vehículos a la vez</option>
+                <option value="4">4 vehículos a la vez</option>
+                <option value="5">5 vehículos a la vez</option>
+                <option value="6">6 vehículos a la vez</option>
+              </select>
+            </div>
+            <div>
+              <label for="setSlotMinutes" class="block text-[11px] font-bold text-slate-700 mb-1">Duración del turno</label>
+              <select id="setSlotMinutes" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-bold">
+                <option value="30">Cada 30 min</option>
+                <option value="45">Cada 45 min</option>
+                <option value="60">Cada 60 min</option>
+                <option value="90">Cada 90 min</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-xs font-bold text-slate-800">Horarios de atención por día (podés activar turno cortado)</p>
+            <div id="weeklyScheduleEditor" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- TAB 3: FIDELIDAD & WHATSAPP -->
+        <div id="stab-loyalty" class="stab-panel hidden space-y-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-xs font-extrabold text-slate-900">Activar Tarjeta de Fidelidad (Sellos)</span>
+              <input type="checkbox" id="setLoyaltyEnabled" class="w-4 h-4 accent-sky-600">
+            </label>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="setLoyaltyTarget" class="block text-xs font-bold text-slate-700 mb-1">Lavados para el premio</label>
+                <input type="number" id="setLoyaltyTarget" min="2" max="20" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-bold">
+              </div>
+              <div>
+                <label for="setLoyaltyExpiryDays" class="block text-xs font-bold text-slate-700 mb-1">Caducidad sin visitas (días)</label>
+                <input type="number" id="setLoyaltyExpiryDays" min="7" max="365" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-bold">
+              </div>
+            </div>
+
+            <div>
+              <label for="setLoyaltyReward" class="block text-xs font-bold text-slate-700 mb-1">Premio al completar la tarjeta</label>
+              <input type="text" id="setLoyaltyReward" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm">
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label for="setWelcomeTpl" class="block text-xs font-bold text-slate-700 mb-1">Plantilla de Bienvenida y Links</label>
+              <p class="text-[11px] text-slate-500 mb-1">Variables: {nombre}, {local}, {direccion}, {link_turnero}, {alias}, {meta}, {premio}, {caducidad}</p>
+              <textarea id="setWelcomeTpl" rows="4" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
+            </div>
+            <div>
+              <label for="setReadyTpl" class="block text-xs font-bold text-slate-700 mb-1">Plantilla "Vehículo Listo para Retirar"</label>
+              <p class="text-[11px] text-slate-500 mb-1">Variables: {nombre}, {vehiculo}, {patente}, {monto}, {alias}, {sellos}, {meta}, {link_pase}</p>
+              <textarea id="setReadyTpl" rows="3" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: SEGURIDAD PIN -->
+        <div id="stab-security" class="stab-panel hidden space-y-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <label class="flex items-center justify-between cursor-pointer">
+              <div>
+                <span class="block text-xs font-extrabold text-slate-900">Proteger Configuración y Tarifas con PIN de Dueño</span>
+                <span class="block text-[11px] text-slate-500">Bloqueo de 120s ante 5 intentos fallidos + Clave Maestra offline</span>
+              </div>
+              <input type="checkbox" id="setPinEnabled" class="w-4 h-4 accent-sky-600">
+            </label>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label for="setOwnerPin" class="block text-xs font-bold text-slate-700 mb-1">PIN del Dueño (4 a 6 números)</label>
+                <input type="password" inputmode="numeric" id="setOwnerPin" minlength="4" maxlength="6" placeholder="Ej. 1234" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm">
+              </div>
+              <div>
+                <label for="setMasterKey" class="block text-xs font-bold text-slate-700 mb-1">Clave Maestra de Rescate (offline)</label>
+                <input type="password" id="setMasterKey" minlength="4" placeholder="Para recuperar el PIN sin internet" class="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm">
+              </div>
+            </div>
+            <p id="pinSavedHint" class="text-[11px] text-slate-500"></p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-bold text-slate-800">Registro de Alertas de Seguridad</p>
+              <button type="button" onclick="clearSecurityLog()" class="text-[11px] font-bold text-slate-500 hover:text-slate-800">Limpiar registro</button>
+            </div>
+            <div id="securityAlertsList" class="bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-1.5 text-xs text-slate-600"></div>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100 flex gap-2">
+          <button type="button" onclick="closeDialog('settingsModal')" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold">Cancelar</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">Guardar y Sincronizar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: DESBLOQUEO CON PIN / RESCATE CLAVE MAESTRA         -->
+  <!-- ========================================================= -->
+  <dialog id="pinPromptModal" closedby="any" aria-labelledby="pinPromptTitle" class="w-full max-w-xs">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xl p-5 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h2 id="pinPromptTitle" class="text-base font-extrabold text-slate-900">Acceso de Dueño</h2>
+        <button type="button" onclick="closeDialog('pinPromptModal')" class="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs">✕</button>
+      </div>
+
+      <!-- Modo PIN -->
+      <div id="pinVerifyPanel" class="space-y-3">
+        <p class="text-xs text-slate-600">Ingresá el PIN del dueño para modificar configuración, tarifas o respaldos.</p>
+        <input type="password" inputmode="numeric" id="pinPromptInput" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter'){event.preventDefault();verifyOwnerPin();}" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center text-lg font-extrabold tracking-widest focus:bg-white focus:border-sky-600 focus:outline-none">
+        <p id="pinErrorFeedback" class="hidden text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2 text-center"></p>
+        <button type="button" id="btnVerifyPin" onclick="verifyOwnerPin()" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">Desbloquear</button>
+        <button type="button" onclick="toggleMasterRecoveryMode(true)" class="w-full text-[11px] font-bold text-sky-600 hover:underline">¿Olvidaste tu PIN? Usar Clave Maestra</button>
+      </div>
+
+      <!-- Modo Rescate Offline -->
+      <div id="pinRecoveryPanel" class="hidden space-y-3">
+        <p class="text-xs text-slate-600">Rescate offline con tu Clave Maestra para definir un nuevo PIN.</p>
+        <input type="password" id="recoveryMasterInput" placeholder="Clave Maestra" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+        <input type="password" inputmode="numeric" id="recoveryNewPinInput" minlength="4" maxlength="6" placeholder="Nuevo PIN (4-6 dígitos)" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm">
+        <p id="recoveryFeedback" class="hidden text-xs font-bold text-rose-600"></p>
+        <div class="flex gap-2">
+          <button type="button" onclick="toggleMasterRecoveryMode(false)" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold">Volver</button>
+          <button type="button" onclick="recoverPinWithMaster()" class="flex-1 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold">Restablecer</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: COPIA DE SEGURIDAD (GOOGLE DRIVE + JSON)           -->
+  <!-- ========================================================= -->
+  <dialog id="backupModal" closedby="any" aria-labelledby="backupModalTitle" class="sheet-dialog w-full max-w-md">
+    <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 id="backupModalTitle" class="text-base font-extrabold text-slate-900">Copia de Seguridad</h2>
+          <p id="lastBackupText" class="text-[11px] text-slate-500">Respaldo automático en Google Drive activo</p>
+        </div>
+        <button type="button" onclick="closeDialog('backupModal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="p-5 space-y-4 overflow-y-auto">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-emerald-950 uppercase">Google Drive Conectado</span>
+            <span class="text-[10px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded">Automático</span>
+          </div>
+          <p class="text-xs text-emerald-900/80 leading-relaxed">
+            Tus clientes, tarifas y sellos se guardan en la carpeta <strong>"Copia de seguridad Lavaderos"</strong> cuando hay conexión Wi-Fi o datos.
+          </p>
+          <button type="button" id="btnSyncNow" onclick="syncToGoogleDriveNow(true)" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+            Guardar Copia en Google Drive Ahora
+          </button>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+          <p class="text-xs font-extrabold text-slate-700 uppercase">Archivo Local / Excel</p>
+          <button type="button" onclick="downloadBackupJSON()" class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">
+            Descargar Respaldo (.json)
+          </button>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="exportCSV()" class="py-2 px-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 text-xs font-bold">
+              Planilla CSV
+            </button>
+            <label class="py-2 px-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-sky-700 text-xs font-bold text-center cursor-pointer">
+              Restaurar (.json)
+              <input type="file" accept=".json" class="hidden" onchange="importBackupFileWithGuard(event)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Opción avanzada para otro Google Drive propio -->
+        <details class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+          <summary class="font-bold text-slate-700 cursor-pointer">Usar webhook propio de Google Drive (Avanzado)</summary>
+          <div class="mt-2.5 space-y-2">
+            <input type="url" id="customDriveWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs">
+            <button type="button" onclick="saveCustomDriveWebhook()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs font-bold">Guardar URL</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Live region para accesibilidad (ARIA announcements) -->
+  <div id="a11yAnnouncer" aria-live="polite" class="visually-hidden"></div>
+
+  <!-- Toast global -->
+  <div id="globalToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg pointer-events-none opacity-0 translate-y-3 transition-all duration-200"></div>
+
+  <script>
+    // =========================================================
+    // 1. CONSTANTES DE NUBE, DRIVE Y ALMACENAMIENTO
+    // =========================================================
+    const CLOUD_KV_APP_KEY = 'ozyom7gs';
+    const CLOUD_KV_BASE = 'https://keyvalue.immanuel.co/api/KeyVal';
+    const AUTO_DRIVE_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzI2Bn0rj_MpW5lFhNJ2um2oEiwtSR4YRbfzedtoYL150rtvcKJ4go_bmLthl24xzMF2Q/exec';
+    const AUTO_DRIVE_FOLDER = 'Copia de seguridad Lavaderos';
+
+    const LS_KEYS = {
+      settings: 'lavadero_settings_v1',
+      services: 'lavadero_services_v1',
+      clients: 'lavadero_clients_v1',
+      washes: 'lavadero_washes_v1',
+      pinLock: 'lavadero_pin_lock_v1',
+      secLog: 'lavadero_sec_log_v1',
+      cloudDayPrefix: 'lavadero_day_cache_'
+    };
+
+    const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const DAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+    function createDefaultWeeklySchedule() {
+      return {
+        0: { enabled: false, start: '09:00', end: '13:00', hasSplit: false, start2: '15:00', end2: '18:00' },
+        1: { enabled: true,  start: '08:30', end: '13:00', hasSplit: true,  start2: '15:00', end2: '19:30' },
+        2: { enabled: true,  start: '08:30', end: '13:00', hasSplit: true,  start2: '15:00', end2: '19:30' },
+        3: { enabled: true,  start: '08:30', end: '13:00', hasSplit: true,  start2: '15:00', end2: '19:30' },
+        4: { enabled: true,  start: '08:30', end: '13:00', hasSplit: true,  start2: '15:00', end2: '19:30' },
+        5: { enabled: true,  start: '08:30', end: '13:00', hasSplit: true,  start2: '15:00', end2: '19:30' },
+        6: { enabled: true,  start: '08:30', end: '14:00', hasSplit: false, start2: '16:00', end2: '19:00' }
+      };
+    }
+
+    function generateRandomBizId() {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let out = 'lav-';
+      for (let i = 0; i < 5; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+
+    const DEFAULT_SETTINGS = {
+      businessId: generateRandomBizId(),
+      businessName: 'Lavadero · Autos & Motos',
+      businessAddress: 'Av. Principal 1234',
+      businessLogo: '',
+      whatsappPhone: '5491100000000',
+      paymentAlias: 'lavadero.autos.mp',
+      paymentHolder: 'Lavadero Local',
+      showPublicPrices: true,
+      bookingEnabled: true,
+      bookingCapacity: 1,
+      bookingSlotMinutes: 45,
+      weeklySchedule: createDefaultWeeklySchedule(),
+      loyaltyEnabled: true,
+      loyaltyTarget: 6,
+      loyaltyReward: '1 Lavado Completo Gratis',
+      loyaltyExpiryDays: 60,
+      welcomeTemplate: 'Hola {nombre}, bienvenido a *{local}* ({direccion}).\n\nTe compartimos nuestros accesos:\n• Reserva tu turno online: {link_turnero}\n• Alias para transferencias: {alias}\n• Fidelidad: sumas 1 sello por lavado y con {meta} sellos tenes {premio} (tus sellos se mantienen vigentes visitandonos al menos cada {caducidad} dias).',
+      readyTemplate: 'Hola {nombre}, tu {vehiculo} ({patente}) ya esta listo para retirar.\n• Total: {monto}\n• Alias: {alias}\n• Sellos actuales: {sellos}/{meta}\n• Tu tarjeta digital: {link_pase}',
+      driveWebhookUrl: AUTO_DRIVE_WEBHOOK,
+      autoSyncDrive: true,
+      lastBackupDate: null,
+      pinEnabled: false,
+      ownerPinHash: '',
+      masterKeyHash: ''
+    };
+
+    const DEFAULT_SERVICES = [
+      { id: 'srv_m1', name: 'Moto · Lavado Completo', type: 'Moto', price: 8000, active: true },
+      { id: 'srv_m2', name: 'Moto · Alta Cilindrada / Cuatri', type: 'Moto', price: 11000, active: true },
+      { id: 'srv_a1', name: 'Auto · Lavado Carrocería', type: 'Auto', price: 12000, active: true },
+      { id: 'srv_a2', name: 'Auto · Completo + Aspirado', type: 'Auto', price: 16000, active: true },
+      { id: 'srv_c1', name: 'Camioneta / SUV · Completo', type: 'Camioneta', price: 20000, active: true },
+      { id: 'srv_x1', name: 'Encerado / Brillo Rápido', type: 'Todos', price: 6000, active: true }
+    ];
+
+    // =========================================================
+    // 2. UTILIDADES DE SEGURIDAD, FORMATO Y FECHA ARGENTINA (GMT-3)
+    // =========================================================
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function isValidSafeImageSrc(src) {
+      if (!src || typeof src !== 'string') return false;
+      const trimmed = src.trim();
+      return trimmed.startsWith('data:image/') || trimmed.startsWith('https://');
+    }
+
+    function cleanWhatsAppText(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}]/gu, '')
+        .replace(/\uFFFD/g, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+    }
+
+    function formatArgentineWhatsApp(rawPhone) {
+      let digits = String(rawPhone || '').replace(/\D/g, '');
+      if (!digits) return '';
+      if (digits.startsWith('00')) digits = digits.slice(2);
+      if (digits.startsWith('0')) digits = digits.slice(1);
+      if (digits.startsWith('549')) return digits;
+      if (digits.startsWith('54')) return '549' + digits.slice(2).replace(/^9/, '');
+      if (digits.startsWith('15') && digits.length === 10) digits = '11' + digits.slice(2);
+      return '549' + digits;
+    }
+
+    function formatARS(num) {
+      const n = Number(num) || 0;
+      const hasDecimals = Math.abs(n % 1) > 0.001;
+      return '$ ' + new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: hasDecimals ? 2 : 0,
+        maximumFractionDigits: hasDecimals ? 2 : 0
+      }).format(n);
+    }
+
+    function getArgDateParts(dateObj = new Date()) {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = {};
+      for (const p of fmt.formatToParts(dateObj)) {
+        if (p.type !== 'literal') parts[p.type] = p.value;
+      }
+      return parts;
+    }
+
+    function getArgTodayStr() {
+      const p = getArgDateParts();
+      return `${p.year}-${p.month}-${p.day}`;
+    }
+
+    function getArgNowMinutes() {
+      const p = getArgDateParts();
+      const h = parseInt(p.hour, 10) % 24;
+      const m = parseInt(p.minute, 10);
+      return h * 60 + m;
+    }
+
+    function addDaysToDateStr(dateStr, days) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d + days));
+      return dt.toISOString().slice(0, 10);
+    }
+
+    function diffDaysDateStr(fromStr, toStr) {
+      if (!fromStr || !toStr) return 0;
+      const [y1, m1, d1] = fromStr.split('-').map(Number);
+      const [y2, m2, d2] = toStr.split('-').map(Number);
+      const t1 = Date.UTC(y1, m1 - 1, d1);
+      const t2 = Date.UTC(y2, m2 - 1, d2);
+      return Math.floor((t2 - t1) / 86400000);
+    }
+
+    function formatDateAR(dateStr) {
+      if (!dateStr || !dateStr.includes('-')) return '-';
+      const [y, m, d] = dateStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    async function hashSecret(val) {
+      const raw = 'lavadero_salt_' + String(val || '');
+      if (window.crypto && window.crypto.subtle && window.isSecureContext) {
+        const buf = new TextEncoder().encode(raw);
+        const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+      let h = 2166136261;
+      for (let i = 0; i < raw.length; i++) {
+        h ^= raw.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return 'fnv_' + (h >>> 0).toString(16);
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('globalToast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-3');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-3');
+      }, 2600);
+    }
+
+    // =========================================================
+    // 3. ESTADO GLOBAL Y PERSISTENCIA LOCAL
+    // =========================================================
+    function loadSettings() {
+      const saved = JSON.parse(localStorage.getItem(LS_KEYS.settings) || 'null');
+      if (!saved) {
+        const fresh = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        localStorage.setItem(LS_KEYS.settings, JSON.stringify(fresh));
+        return fresh;
+      }
+      const merged = Object.assign({}, DEFAULT_SETTINGS, saved);
+      if (!merged.weeklySchedule) merged.weeklySchedule = createDefaultWeeklySchedule();
+      if (!merged.businessId) merged.businessId = generateRandomBizId();
+      if (!merged.driveWebhookUrl) merged.driveWebhookUrl = AUTO_DRIVE_WEBHOOK;
+      return merged;
+    }
+
+    let settings = loadSettings();
+    let services = JSON.parse(localStorage.getItem(LS_KEYS.services) || 'null') || JSON.parse(JSON.stringify(DEFAULT_SERVICES));
+    let clients = JSON.parse(localStorage.getItem(LS_KEYS.clients) || 'null') || [
+      {
+        id: 'c_demo1',
+        name: 'Lucas Fernández',
+        phone: '5491134567890',
+        vehicleType: 'Auto',
+        vehicleModel: 'VW Gol Trend',
+        plate: 'AC482KP',
+        lastWashDate: addDaysToDateStr(getArgTodayStr(), -12),
+        lastService: 'Auto · Completo + Aspirado',
+        stamps: 4,
+        totalWashes: 10,
+        debt: 0,
+        notes: 'Sin silicona en el tablero.'
+      },
+      {
+        id: 'c_demo2',
+        name: 'Sofía Martínez',
+        phone: '5491145678901',
+        vehicleType: 'Moto',
+        vehicleModel: 'Honda Tornado 250',
+        plate: 'A142XYZ',
+        lastWashDate: addDaysToDateStr(getArgTodayStr(), -55),
+        lastService: 'Moto · Lavado Completo',
+        stamps: 3,
+        totalWashes: 3,
+        debt: 8000,
+        notes: 'Engrasar cadena después del secado.'
+      }
+    ];
+    let washesLog = JSON.parse(localStorage.getItem(LS_KEYS.washes) || '[]');
+    let currentFilter = 'all';
+    let ownerUnlockedInSession = !settings.pinEnabled;
+    let pendingPinCallback = null;
+    let activeWashClientId = null;
+    let activeQRClientId = null;
+
+    function persistAll(skipDrive = false) {
+      localStorage.setItem(LS_KEYS.settings, JSON.stringify(settings));
+      localStorage.setItem(LS_KEYS.services, JSON.stringify(services));
+      localStorage.setItem(LS_KEYS.clients, JSON.stringify(clients));
+      localStorage.setItem(LS_KEYS.washes, JSON.stringify(washesLog.slice(0, 500)));
+      updateBackupBadge();
+      if (!skipDrive && settings.autoSyncDrive) {
+        clearTimeout(window.__driveDebounce);
+        window.__driveDebounce = setTimeout(() => syncToGoogleDriveNow(false), 1800);
+      }
+    }
+
+    // =========================================================
+    // 4. FIDELIDAD CON CADUCIDAD POR INACTIVIDAD (OPCIÓN A)
+    // =========================================================
+    function getLoyaltyStatus(client, cfg = settings) {
+      if (!cfg.loyaltyEnabled) return { enabled: false, stamps: 0, status: 'disabled' };
+      const target = Math.max(2, Number(cfg.loyaltyTarget) || 6);
+      const expiryDays = Math.max(7, Number(cfg.loyaltyExpiryDays) || 60);
+      const rawStamps = Math.max(0, Number(client.stamps) || 0);
+
+      if (rawStamps === 0 || !client.lastWashDate) {
+        return {
+          enabled: true,
+          stamps: 0,
+          rawStamps: 0,
+          target,
+          expiryDays,
+          daysLeft: expiryDays,
+          expiryDateStr: null,
+          status: 'empty'
+        };
+      }
+
+      const today = getArgTodayStr();
+      const elapsed = Math.max(0, diffDaysDateStr(client.lastWashDate, today));
+      const daysLeft = expiryDays - elapsed;
+      const expiryDateStr = addDaysToDateStr(client.lastWashDate, expiryDays);
+
+      if (daysLeft <= 0) {
+        return {
+          enabled: true,
+          stamps: 0,
+          rawStamps,
+          target,
+          expiryDays,
+          daysElapsed: elapsed,
+          daysLeft: 0,
+          expiryDateStr,
+          status: 'expired'
+        };
+      }
+
+      const status = rawStamps >= target ? 'ready' : (daysLeft <= 10 ? 'expiring' : 'active');
+      return {
+        enabled: true,
+        stamps: rawStamps,
+        rawStamps,
+        target,
+        expiryDays,
+        daysElapsed: elapsed,
+        daysLeft,
+        expiryDateStr,
+        status
+      };
+    }
+
+    // =========================================================
+    // 5. MODALES NATIVOS (<dialog>) Y VALIDACIÓN DIFERIDA
+    // =========================================================
+    function openDialog(id) {
+      const dlg = document.getElementById(id);
+      if (dlg && !dlg.open) dlg.showModal();
+    }
+
+    function closeDialog(id) {
+      const dlg = document.getElementById(id);
+      if (dlg && dlg.open) dlg.close();
+    }
+
+    function initDialogLightDismissFallback() {
+      if ('closedBy' in HTMLDialogElement.prototype) return;
+      const isOutside = (e, dialog) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      for (const dlg of document.querySelectorAll('dialog[closedby="any"]')) {
+        let downOutside = false;
+        dlg.addEventListener('pointerdown', (e) => { downOutside = isOutside(e, dlg); });
+        dlg.addEventListener('pointerup', (e) => { if (downOutside && isOutside(e, dlg)) dlg.close(); });
+      }
+    }
+
+    function initDeferredFormValidation() {
+      const supportsUserInvalid = CSS.supports('selector(:user-invalid)');
+      const dirty = new WeakMap();
+      const announcer = document.getElementById('a11yAnnouncer');
+
+      const linkError = (el, shown) => {
+        const errorId = el.dataset.error;
+        if (!errorId) return;
+        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((id) => id && id !== errorId);
+        if (shown) ids.push(errorId);
+        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+        else el.removeAttribute('aria-describedby');
+      };
+
+      const syncEl = (el, interacted = false) => {
+        if (!el.matches?.('input, select, textarea') || !el.checkValidity) return;
+        const valid = el.validity.valid;
+        if (!supportsUserInvalid && interacted) {
+          el.classList.toggle('user-invalid-fallback', !valid);
+          el.classList.toggle('user-valid-fallback', valid);
+        }
+        const showErr = supportsUserInvalid ? el.matches(':user-invalid') : (interacted && !valid);
+        el.setAttribute('aria-invalid', showErr ? 'true' : 'false');
+        linkError(el, showErr);
+        if (showErr && el.dataset.error && announcer) {
+          const msgEl = document.getElementById(el.dataset.error);
+          if (msgEl) announcer.textContent = msgEl.textContent.trim();
+        }
+      };
+
+      document.querySelectorAll('input, select, textarea').forEach((el) => el.setAttribute('aria-invalid', 'false'));
+
+      document.addEventListener('blur', (e) => {
+        const el = e.target;
+        if (!el.matches?.('input, select, textarea')) return;
+        const st = dirty.get(el) || { interacted: false, blurred: false };
+        st.blurred = true;
+        dirty.set(el, st);
+        if (st.interacted) syncEl(el, true);
+      }, true);
+
+      document.addEventListener('input', (e) => {
+        const el = e.target;
+        if (!el.matches?.('input, select, textarea')) return;
+        const st = dirty.get(el) || { interacted: false, blurred: false };
+        st.interacted = true;
+        dirty.set(el, st);
+        if (st.blurred || el.classList.contains('user-invalid-fallback')) syncEl(el, true);
+      });
+
+      document.addEventListener('invalid', (e) => {
+        const el = e.target;
+        dirty.set(el, { interacted: true, blurred: true });
+        syncEl(el, true);
+      }, true);
+    }
+
+    // =========================================================
+    // 6. BLINDAJE PIN DE DUEÑO (RATE LIMIT 120s + CLAVE MAESTRA)
+    // =========================================================
+    function getPinLockState() {
+      return JSON.parse(localStorage.getItem(LS_KEYS.pinLock) || '{"fails":0,"lockedUntil":0}');
+    }
+
+    function savePinLockState(st) {
+      localStorage.setItem(LS_KEYS.pinLock, JSON.stringify(st));
+    }
+
+    function appendSecurityAlert(reason) {
+      const log = JSON.parse(localStorage.getItem(LS_KEYS.secLog) || '[]');
+      const now = new Date();
+      const stamp = new Intl.DateTimeFormat('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        dateStyle: 'short',
+        timeStyle: 'medium',
+        hour12: false
+      }).format(now);
+      log.unshift({ at: stamp, reason });
+      localStorage.setItem(LS_KEYS.secLog, JSON.stringify(log.slice(0, 50)));
+    }
+
+    function renderSecurityAlerts() {
+      const box = document.getElementById('securityAlertsList');
+      if (!box) return;
+      const log = JSON.parse(localStorage.getItem(LS_KEYS.secLog) || '[]');
+      if (!log.length) {
+        box.innerHTML = '<p class="text-slate-400">Sin intentos bloqueados registrados.</p>';
+        return;
+      }
+      box.innerHTML = log.map((item) => `
+        <div class="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+          <span class="font-semibold text-rose-700">${escapeHTML(item.reason)}</span>
+          <span class="text-[10px] text-slate-500 shrink-0">${escapeHTML(item.at)}</span>
+        </div>
+      `).join('');
+    }
+
+    function clearSecurityLog() {
+      localStorage.removeItem(LS_KEYS.secLog);
+      renderSecurityAlerts();
+      showToast('Registro de seguridad limpiado');
+    }
+
+    function updateLockHeaderUI() {
+      const btn = document.getElementById('pinLockHeaderBtn');
+      const icon = document.getElementById('pinLockHeaderIcon');
+      if (!btn || !icon) return;
+      if (!settings.pinEnabled || !settings.ownerPinHash) {
+        btn.classList.add('hidden');
+        btn.classList.remove('flex');
+        return;
+      }
+      btn.classList.remove('hidden');
+      btn.classList.add('flex');
+      if (ownerUnlockedInSession) {
+        icon.textContent = '🔓';
+        btn.className = 'px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1';
+        btn.title = 'Modo Dueño desbloqueado (tocar para bloquear)';
+      } else {
+        icon.textContent = '🔒';
+        btn.className = 'px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1';
+        btn.title = 'Modo Mostrador bloqueado (tocar para desbloquear)';
+      }
+    }
+
+    function toggleOwnerLock() {
+      if (!settings.pinEnabled) return;
+      if (ownerUnlockedInSession) {
+        ownerUnlockedInSession = false;
+        updateLockHeaderUI();
+        showToast('Modo Dueño bloqueado');
+      } else {
+        requireOwnerPin(() => showToast('Modo Dueño desbloqueado'));
+      }
+    }
+
+    function requireOwnerPin(onAuthorized) {
+      if (!settings.pinEnabled || !settings.ownerPinHash || ownerUnlockedInSession) {
+        onAuthorized();
+        return;
+      }
+      pendingPinCallback = onAuthorized;
+      toggleMasterRecoveryMode(false);
+      document.getElementById('pinPromptInput').value = '';
+      updatePinCountdownUI();
+      openDialog('pinPromptModal');
+    }
+
+    function updatePinCountdownUI() {
+      const st = getPinLockState();
+      const fb = document.getElementById('pinErrorFeedback');
+      const btn = document.getElementById('btnVerifyPin');
+      const inp = document.getElementById('pinPromptInput');
+      const now = Date.now();
+
+      clearInterval(window.__pinLockTimer);
+      if (st.lockedUntil > now) {
+        const tick = () => {
+          const left = Math.ceil((st.lockedUntil - Date.now()) / 1000);
+          if (left <= 0) {
+            clearInterval(window.__pinLockTimer);
+            savePinLockState({ fails: 0, lockedUntil: 0 });
+            fb.classList.add('hidden');
+            btn.disabled = false;
+            inp.disabled = false;
+            return;
+          }
+          fb.textContent = `Bloqueado por seguridad: reintentá en ${left}s`;
+          fb.classList.remove('hidden');
+          btn.disabled = true;
+          inp.disabled = true;
+        };
+        tick();
+        window.__pinLockTimer = setInterval(tick, 1000);
+      } else {
+        fb.classList.add('hidden');
+        btn.disabled = false;
+        inp.disabled = false;
+      }
+    }
+
+    async function verifyOwnerPin() {
+      const st = getPinLockState();
+      if (st.lockedUntil > Date.now()) {
+        updatePinCountdownUI();
+        return;
+      }
+      const raw = document.getElementById('pinPromptInput').value.trim();
+      const h = await hashSecret(raw);
+      const fb = document.getElementById('pinErrorFeedback');
+
+      if (h === settings.ownerPinHash) {
+        savePinLockState({ fails: 0, lockedUntil: 0 });
+        ownerUnlockedInSession = true;
+        updateLockHeaderUI();
+        closeDialog('pinPromptModal');
+        const cb = pendingPinCallback;
+        pendingPinCallback = null;
+        if (cb) cb();
+      } else {
+        st.fails = (st.fails || 0) + 1;
+        if (st.fails >= 5) {
+          st.lockedUntil = Date.now() + 120000;
+          appendSecurityAlert('5 intentos fallidos de PIN (bloqueo 120s)');
+          savePinLockState(st);
+          updatePinCountdownUI();
+        } else {
+          savePinLockState(st);
+          fb.textContent = `PIN incorrecto (${st.fails}/5 intentos).`;
+          fb.classList.remove('hidden');
+        }
+      }
+    }
+
+    function toggleMasterRecoveryMode(showRecovery) {
+      document.getElementById('pinVerifyPanel').classList.toggle('hidden', showRecovery);
+      document.getElementById('pinRecoveryPanel').classList.toggle('hidden', !showRecovery);
+      document.getElementById('recoveryFeedback').classList.add('hidden');
+    }
+
+    async function recoverPinWithMaster() {
+      const masterRaw = document.getElementById('recoveryMasterInput').value.trim();
+      const newPin = document.getElementById('recoveryNewPinInput').value.trim();
+      const fb = document.getElementById('recoveryFeedback');
+
+      if (!settings.masterKeyHash) {
+        fb.textContent = 'No hay una Clave Maestra configurada.';
+        fb.classList.remove('hidden');
+        return;
+      }
+      if (!/^\d{4,6}$/.test(newPin)) {
+        fb.textContent = 'El nuevo PIN debe tener entre 4 y 6 números.';
+        fb.classList.remove('hidden');
+        return;
+      }
+      const mHash = await hashSecret(masterRaw);
+      if (mHash !== settings.masterKeyHash) {
+        appendSecurityAlert('Intento fallido de Clave Maestra');
+        fb.textContent = 'Clave Maestra incorrecta.';
+        fb.classList.remove('hidden');
+        return;
+      }
+      settings.ownerPinHash = await hashSecret(newPin);
+      savePinLockState({ fails: 0, lockedUntil: 0 });
+      ownerUnlockedInSession = true;
+      persistAll(false);
+      updateLockHeaderUI();
+      closeDialog('pinPromptModal');
+      showToast('PIN restablecido con éxito');
+      const cb = pendingPinCallback;
+      pendingPinCallback = null;
+      if (cb) cb();
+    }
+
+    // =========================================================
+    // 7. RENDERIZADO DEL PANEL PRINCIPAL
+    // =========================================================
+    function renderHeaderBrand() {
+      document.getElementById('headerBizName').textContent = settings.businessName || 'Lavadero · Autos & Motos';
+      document.getElementById('headerBizSub').textContent = settings.businessAddress
+        ? `${settings.businessAddress} · ${settings.bookingCapacity || 1} box(es)`
+        : `Panel Operativo · ${settings.bookingCapacity || 1} box(es)`;
+      document.getElementById('capacitySummaryText').textContent =
+        `Capacidad: ${settings.bookingCapacity || 1} vehículo(s) por horario · Turnos cada ${settings.bookingSlotMinutes || 45} min`;
+
+      const logoWrap = document.getElementById('headerLogoWrap');
+      if (isValidSafeImageSrc(settings.businessLogo)) {
+        logoWrap.innerHTML = `<img src="${escapeHTML(settings.businessLogo)}" alt="Logo" class="w-full h-full object-cover">`;
+      } else {
+        logoWrap.innerHTML = `<svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" /></svg>`;
+      }
+      updateLockHeaderUI();
+    }
+
+    function setFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-pill').forEach((btn) => {
+        const active = btn.dataset.filter === f;
+        btn.className = active
+          ? 'filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-slate-900 text-white border border-slate-900'
+          : 'filter-pill px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap bg-white text-slate-700 border border-slate-200';
+      });
+      renderClientsList();
+    }
+
+    function renderStats() {
+      const today = getArgTodayStr();
+      const todayWashes = washesLog.filter((w) => w.date === today).length;
+      const totalDebt = clients.reduce((sum, c) => sum + (Number(c.debt) || 0), 0);
+      const expiringCount = clients.filter((c) => {
+        const ls = getLoyaltyStatus(c);
+        return ls.status === 'expiring' || ls.status === 'expired';
+      }).length;
+
+      document.getElementById('statTotalClients').textContent = clients.length;
+      document.getElementById('statTodayWashes').textContent = todayWashes;
+      document.getElementById('statExpiring').textContent = expiringCount;
+      document.getElementById('statTotalDebt').textContent = formatARS(totalDebt);
+    }
+
+    function renderClientsList() {
+      renderStats();
+      const container = document.getElementById('clientsListContainer');
+      const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+
+      const filtered = clients.filter((c) => {
+        const haystack = `${c.name} ${c.phone} ${c.vehicleModel} ${c.plate} ${c.vehicleType}`.toLowerCase();
+        if (query && !haystack.includes(query)) return false;
+        if (currentFilter === 'debt') return (Number(c.debt) || 0) > 0;
+        if (currentFilter === 'expiring') {
+          const ls = getLoyaltyStatus(c);
+          return ls.status === 'expiring' || ls.status === 'expired';
+        }
+        if (currentFilter !== 'all') return c.vehicleType === currentFilter;
+        return true;
+      });
+
+      if (!filtered.length) {
+        container.innerHTML = `
+          <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-2">
+            <p class="text-sm font-bold text-slate-700">No hay clientes para mostrar</p>
+            <p class="text-xs text-slate-500">Agregá un cliente nuevo o cambiá el filtro de búsqueda.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map((c) => {
+        const debt = Number(c.debt) || 0;
+        const ls = getLoyaltyStatus(c);
+        const vehicleIcon = c.vehicleType === 'Moto' ? '🏍️' : (c.vehicleType === 'Camioneta' ? '🚙' : '🚗');
+        const plateTag = c.plate ? `<span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono font-bold text-slate-700 uppercase">${escapeHTML(c.plate)}</span>` : '';
+        const debtBadge = debt > 0
+          ? `<button type="button" onclick="openQRModal('${escapeHTML(c.id)}')" class="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-extrabold shrink-0">Debe ${formatARS(debt)} · Cobrar QR</button>`
+          : '';
+
+        let loyaltyHtml = '';
+        if (ls.enabled) {
+          const dots = Array.from({ length: ls.target }, (_, idx) => {
+            const filled = idx < ls.stamps;
+            return `<span class="w-4 h-4 rounded-full border ${filled ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white border-slate-300'} inline-flex items-center justify-center text-[9px] font-bold">${filled ? '✓' : ''}</span>`;
+          }).join('');
+
+          let expiryLabel = '';
+          if (ls.status === 'expired') {
+            expiryLabel = `<span class="text-[11px] font-bold text-rose-600">Sellos caducados por inactividad (hace ${ls.daysElapsed} días)</span>`;
+          } else if (ls.status === 'expiring') {
+            expiryLabel = `<span class="text-[11px] font-bold text-amber-600">Por vencer: quedan ${ls.daysLeft} días (${formatDateAR(ls.expiryDateStr)})</span>`;
+          } else if (ls.status === 'ready') {
+            expiryLabel = `<span class="text-[11px] font-extrabold text-emerald-700">Tarjeta completa: ${escapeHTML(settings.loyaltyReward)}</span>`;
+          } else if (ls.stamps > 0) {
+            expiryLabel = `<span class="text-[11px] text-slate-500">Vigencia: ${ls.daysLeft} días (vence ${formatDateAR(ls.expiryDateStr)})</span>`;
+          } else {
+            expiryLabel = `<span class="text-[11px] text-slate-400">Sin sellos activos (caducan a los ${ls.expiryDays} días sin visitas)</span>`;
+          }
+
+          loyaltyHtml = `
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 space-y-1.5">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1 flex-wrap">${dots}</div>
+                <span class="text-[11px] font-extrabold text-slate-700">${ls.stamps}/${ls.target}</span>
+              </div>
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                ${expiryLabel}
+                ${ls.status === 'ready' ? `<button type="button" onclick="redeemClientReward('${escapeHTML(c.id)}')" class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold">Canjear Premio</button>` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <article class="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-sm font-extrabold text-slate-900 truncate">${escapeHTML(c.name)}</h3>
+                  ${plateTag}
+                </div>
+                <p class="text-xs text-slate-600 font-medium">
+                  <span>${vehicleIcon} ${escapeHTML(c.vehicleType)}${c.vehicleModel ? ' · ' + escapeHTML(c.vehicleModel) : ''}</span>
+                  ${c.lastWashDate ? ` · Último: ${formatDateAR(c.lastWashDate)}` : ''}
+                </p>
+                ${c.notes ? `<p class="text-[11px] text-slate-500">${escapeHTML(c.notes)}</p>` : ''}
+              </div>
+              ${debtBadge}
+            </div>
+
+            ${loyaltyHtml}
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+              <button type="button" onclick="openWashModal('${escapeHTML(c.id)}')" class="py-2 px-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold">
+                + Lavado Hoy
+              </button>
+              <button type="button" onclick="sendReadyWhatsApp('${escapeHTML(c.id)}')" class="py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+                WhatsApp Listo
+              </button>
+              <button type="button" onclick="shareClientPass('${escapeHTML(c.id)}')" class="py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 text-xs font-bold">
+                Pase Digital
+              </button>
+              <div class="flex gap-1.5">
+                <button type="button" onclick="openEditClientWithGuard('${escapeHTML(c.id)}')" class="flex-1 py-2 px-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold">
+                  Editar
+                </button>
+                <button type="button" onclick="deleteClientWithGuard('${escapeHTML(c.id)}')" class="py-2 px-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold" title="Eliminar cliente">
+                  ✕
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // =========================================================
+    // 8. CRUD CLIENTES Y REGISTRO DE LAVADOS
+    // =========================================================
+    function openClientModal(clientId = null) {
+      const title = document.getElementById('clientModalTitle');
+      const form = document.getElementById('clientForm');
+      form.reset();
+      document.getElementById('editClientId').value = '';
+
+      if (clientId) {
+        const c = clients.find((x) => x.id === clientId);
+        if (!c) return;
+        title.textContent = 'Editar Cliente / Vehículo';
+        document.getElementById('editClientId').value = c.id;
+        document.getElementById('cName').value = c.name || '';
+        document.getElementById('cPhone').value = c.phone || '';
+        document.getElementById('cVehicleType').value = c.vehicleType || 'Auto';
+        document.getElementById('cVehicleModel').value = c.vehicleModel || '';
+        document.getElementById('cPlate').value = c.plate || '';
+        document.getElementById('cStamps').value = getLoyaltyStatus(c).stamps;
+        document.getElementById('cDebt').value = Number(c.debt) || 0;
+        document.getElementById('cNotes').value = c.notes || '';
+      } else {
+        title.textContent = 'Nuevo Cliente / Vehículo';
+      }
+      openDialog('clientModal');
+    }
+
+    function openEditClientWithGuard(id) {
+      requireOwnerPin(() => openClientModal(id));
+    }
+
+    function deleteClientWithGuard(id) {
+      requireOwnerPin(() => {
+        const c = clients.find((x) => x.id === id);
+        if (!c) return;
+        if (!confirm(`¿Eliminar a ${c.name} del listado?`)) return;
+        clients = clients.filter((x) => x.id !== id);
+        persistAll(false);
+        renderClientsList();
+        showToast('Cliente eliminado');
+      });
+    }
+
+    function saveClientForm(e) {
+      e.preventDefault();
+      const form = e.target;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      const id = document.getElementById('editClientId').value;
+      const data = {
+        name: document.getElementById('cName').value.trim(),
+        phone: formatArgentineWhatsApp(document.getElementById('cPhone').value),
+        vehicleType: document.getElementById('cVehicleType').value,
+        vehicleModel: document.getElementById('cVehicleModel').value.trim(),
+        plate: document.getElementById('cPlate').value.trim().toUpperCase(),
+        stamps: Math.max(0, parseInt(document.getElementById('cStamps').value, 10) || 0),
+        debt: Math.max(0, Number(document.getElementById('cDebt').value) || 0),
+        notes: document.getElementById('cNotes').value.trim()
+      };
+
+      if (id) {
+        const idx = clients.findIndex((x) => x.id === id);
+        if (idx !== -1) {
+          clients[idx] = Object.assign({}, clients[idx], data);
+          if (data.stamps > 0 && !clients[idx].lastWashDate) {
+            clients[idx].lastWashDate = getArgTodayStr();
+          }
+        }
+      } else {
+        clients.unshift(Object.assign({
+          id: 'c_' + Date.now(),
+          lastWashDate: data.stamps > 0 ? getArgTodayStr() : '',
+          lastService: '',
+          totalWashes: data.stamps
+        }, data));
+      }
+
+      persistAll(false);
+      renderClientsList();
+      closeDialog('clientModal');
+      showToast(id ? 'Cliente actualizado' : 'Cliente guardado');
+    }
+
+    function openWashModal(clientId) {
+      const c = clients.find((x) => x.id === clientId);
+      if (!c) return;
+      activeWashClientId = clientId;
+      document.getElementById('washClientSubtitle').textContent = `${c.name} · ${c.vehicleType} ${c.vehicleModel || ''}`;
+
+      const select = document.getElementById('washServiceSelect');
+      const sorted = [...services].sort((a, b) => (a.type === c.vehicleType ? -1 : b.type === c.vehicleType ? 1 : 0));
+      select.innerHTML = sorted.map((s) =>
+        `<option value="${escapeHTML(s.id)}" data-price="${Number(s.price) || 0}">${escapeHTML(s.name)} (${formatARS(s.price)})</option>`
+      ).join('') + '<option value="custom" data-price="0">Otro / Importe manual</option>';
+
+      onWashServiceChange();
+
+      const ls = getLoyaltyStatus(c);
+      const warn = document.getElementById('washExpiryWarning');
+      if (ls.status === 'expired') {
+        warn.textContent = `Atención: los ${ls.rawStamps} sellos anteriores caducaron por inactividad (${ls.daysElapsed} días). Al confirmar arrancará un ciclo nuevo con 1 sello.`;
+        warn.classList.remove('hidden');
+      } else {
+        warn.classList.add('hidden');
+      }
+
+      document.getElementById('washAddStampCheck').checked = !!settings.loyaltyEnabled;
+      document.getElementById('washMarkAsDebtCheck').checked = false;
+      openDialog('washModal');
+    }
+
+    function onWashServiceChange() {
+      const sel = document.getElementById('washServiceSelect');
+      const opt = sel.options[sel.selectedIndex];
+      const price = opt ? Number(opt.dataset.price || 0) : 0;
+      document.getElementById('washPriceInput').value = price;
+    }
+
+    function confirmWash() {
+      const c = clients.find((x) => x.id === activeWashClientId);
+      if (!c) return;
+
+      const sel = document.getElementById('washServiceSelect');
+      const srvName = sel.value === 'custom' ? 'Lavado personalizado' : (services.find((s) => s.id === sel.value)?.name || 'Lavado');
+      const price = Math.max(0, Number(document.getElementById('washPriceInput').value) || 0);
+      const addStamp = document.getElementById('washAddStampCheck').checked;
+      const isDebt = document.getElementById('washMarkAsDebtCheck').checked;
+      const today = getArgTodayStr();
+
+      const ls = getLoyaltyStatus(c);
+      let currentValidStamps = ls.status === 'expired' ? 0 : (Number(ls.stamps) || 0);
+      if (addStamp && settings.loyaltyEnabled) {
+        currentValidStamps = Math.min(Number(settings.loyaltyTarget) || 6, currentValidStamps + 1);
+      }
+
+      c.stamps = currentValidStamps;
+      c.lastWashDate = today;
+      c.lastService = srvName;
+      c.lastWashPrice = price;
+      c.totalWashes = (Number(c.totalWashes) || 0) + 1;
+      if (isDebt && price > 0) {
+        c.debt = (Number(c.debt) || 0) + price;
+      }
+
+      washesLog.unshift({
+        id: 'w_' + Date.now(),
+        clientId: c.id,
+        clientName: c.name,
+        vehicle: `${c.vehicleType} ${c.plate || ''}`.trim(),
+        service: srvName,
+        price,
+        date: today
+      });
+
+      persistAll(false);
+      renderClientsList();
+      closeDialog('washModal');
+
+      if (addStamp && settings.loyaltyEnabled && c.stamps >= (Number(settings.loyaltyTarget) || 6)) {
+        if (typeof confetti === 'function') confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+        showToast('Lavado registrado · ¡Completó la tarjeta de fidelidad!');
+      } else {
+        showToast('Lavado registrado y vigencia renovada');
+      }
+    }
+
+    function redeemClientReward(clientId) {
+      const c = clients.find((x) => x.id === clientId);
+      if (!c) return;
+      if (!confirm(`¿Canjear "${settings.loyaltyReward}" para ${c.name}? Sus sellos volverán a 0.`)) return;
+      c.stamps = 0;
+      c.lastWashDate = getArgTodayStr();
+      persistAll(false);
+      renderClientsList();
+      showToast('Premio canjeado');
+    }
+
+    // =========================================================
+    // 9. WHATSAPP (CERO ROMBOS / CERO EMOJIS) Y PASE DIGITAL
+    // =========================================================
+    function getPublicBaseUrl() {
+      return window.location.origin + window.location.pathname;
+    }
+
+    function buildBookingUrl() {
+      return `${getPublicBaseUrl()}?reservar=1&biz=${encodeURIComponent(settings.businessId)}`;
+    }
+
+    function buildPassUrl(client) {
+      const ls = getLoyaltyStatus(client);
+      const params = new URLSearchParams({
+        fidelidad: '1',
+        biz: settings.businessId,
+        c: client.name,
+        v: `${client.vehicleType}${client.vehicleModel ? ' ' + client.vehicleModel : ''}${client.plate ? ' (' + client.plate + ')' : ''}`,
+        s: String(ls.stamps),
+        m: String(settings.loyaltyTarget || 6),
+        p: settings.loyaltyReward || 'Lavado gratis',
+        l: settings.businessName || 'Lavadero',
+        w: settings.whatsappPhone || '',
+        u: client.lastWashDate || '',
+        cad: String(settings.loyaltyExpiryDays || 60)
+      });
+      return `${getPublicBaseUrl()}?${params.toString()}`;
+    }
+
+    function openWhatsAppUrl(phone, text) {
+      const cleanTxt = cleanWhatsAppText(text);
+      const cleanPhone = formatArgentineWhatsApp(phone);
+      const base = 'https://api.whatsapp.com/send';
+      const url = cleanPhone
+        ? `${base}?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(cleanTxt)}`
+        : `${base}?text=${encodeURIComponent(cleanTxt)}`;
+      window.open(url, '_blank', 'noopener');
+    }
+
+    function openWelcomeModal() {
+      refreshWelcomePreview();
+      openDialog('welcomeModal');
+    }
+
+    function refreshWelcomePreview() {
+      const targetName = document.getElementById('welcomeTargetName').value.trim() || 'Cliente';
+      const includePrices = document.getElementById('welcomeIncludePrices').checked;
+      let msg = (settings.welcomeTemplate || DEFAULT_SETTINGS.welcomeTemplate)
+        .replace(/\{nombre\}/gi, targetName)
+        .replace(/\{local\}/gi, settings.businessName || 'nuestro lavadero')
+        .replace(/\{direccion\}/gi, settings.businessAddress || 'consultar direccion')
+        .replace(/\{link_turnero\}/gi, buildBookingUrl())
+        .replace(/\{alias\}/gi, settings.paymentAlias || 'consultar alias')
+        .replace(/\{meta\}/gi, String(settings.loyaltyTarget || 6))
+        .replace(/\{premio\}/gi, settings.loyaltyReward || '1 lavado gratis')
+        .replace(/\{caducidad\}/gi, String(settings.loyaltyExpiryDays || 60));
+
+      if (includePrices && services.length) {
+        const lines = services
+          .filter((s) => s.active !== false)
+          .slice(0, 6)
+          .map((s) => `• ${s.name}: ${formatARS(s.price)}`);
+        if (lines.length) {
+          msg += `\n\n*Tarifas vigentes:*\n${lines.join('\n')}`;
+        }
+      }
+      document.getElementById('welcomePreviewBox').value = cleanWhatsAppText(msg);
+    }
+
+    function copyWelcomeMessage() {
+      const txt = cleanWhatsAppText(document.getElementById('welcomePreviewBox').value);
+      navigator.clipboard?.writeText(txt).then(() => showToast('Mensaje de bienvenida copiado'));
+    }
+
+    function sendWelcomeWhatsApp() {
+      const phone = document.getElementById('welcomeTargetPhone').value;
+      const txt = document.getElementById('welcomePreviewBox').value;
+      openWhatsAppUrl(phone, txt);
+    }
+
+    function sendReadyWhatsApp(clientId) {
+      const c = clients.find((x) => x.id === clientId);
+      if (!c) return;
+      const ls = getLoyaltyStatus(c);
+      const amount = Number(c.debt) > 0 ? Number(c.debt) : (Number(c.lastWashPrice) || 0);
+      const montoTxt = amount > 0 ? formatARS(amount) : 'Abonado';
+      const msg = (settings.readyTemplate || DEFAULT_SETTINGS.readyTemplate)
+        .replace(/\{nombre\}/gi, c.name)
+        .replace(/\{vehiculo\}/gi, `${c.vehicleType} ${c.vehicleModel || ''}`.trim())
+        .replace(/\{patente\}/gi, c.plate || '-')
+        .replace(/\{monto\}/gi, montoTxt)
+        .replace(/\{alias\}/gi, settings.paymentAlias || 'consultar en caja')
+        .replace(/\{sellos\}/gi, String(ls.stamps))
+        .replace(/\{meta\}/gi, String(settings.loyaltyTarget || 6))
+        .replace(/\{link_pase\}/gi, buildPassUrl(c));
+
+      openWhatsAppUrl(c.phone, msg);
+    }
+
+    function shareClientPass(clientId) {
+      const c = clients.find((x) => x.id === clientId);
+      if (!c) return;
+      const url = buildPassUrl(c);
+      navigator.clipboard?.writeText(url).then(() => {
+        showToast('Link del Pase Digital copiado');
+      }).catch(() => {
+        window.open(url, '_blank', 'noopener');
+      });
+    }
+
+    function copyBookingLink() {
+      const url = buildBookingUrl();
+      navigator.clipboard?.writeText(url).then(() => showToast('Link del Turnero copiado'));
+    }
+
+    // =========================================================
+    // 10. COBRO QR ROBUSTO (QRCode.js + FALLBACK GARANTIZADO)
+    // =========================================================
+    function renderQRCodeInto(containerEl, qrPayloadText) {
+      containerEl.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(containerEl, {
+            text: qrPayloadText,
+            width: 200,
+            height: 200,
+            colorDark: '#0F172A',
+            colorLight: '#FFFFFF',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+          return;
+        } catch (err) {
+          console.warn('QRCode local fallback:', err);
+        }
+      }
+      const img = document.createElement('img');
+      img.alt = 'Código QR';
+      img.width = 200;
+      img.height = 200;
+      img.src = `https://quickchart.io/qr?size=200&text=${encodeURIComponent(qrPayloadText)}`;
+      img.onerror = () => {
+        containerEl.innerHTML = `<div class="p-3 text-xs font-bold text-slate-700 border border-dashed border-slate-300 rounded-xl break-all">${escapeHTML(qrPayloadText)}</div>`;
+      };
+      containerEl.appendChild(img);
+    }
+
+    function openQRModal(clientId = null) {
+      activeQRClientId = clientId;
+      document.getElementById('qrAmountControls').classList.remove('hidden');
+      document.getElementById('qrAliasBox').classList.remove('hidden');
+      document.getElementById('qrModalTitle').textContent = 'Cobro con QR / Alias';
+      document.getElementById('qrAliasText').textContent = settings.paymentAlias || 'Sin alias configurado';
+      document.getElementById('qrHolderText').textContent = settings.paymentHolder ? `Titular: ${settings.paymentHolder}` : '';
+
+      const clearBtn = document.getElementById('qrClearDebtBtn');
+      const amtInput = document.getElementById('qrAmountInput');
+      if (clientId) {
+        const c = clients.find((x) => x.id === clientId);
+        if (c) {
+          document.getElementById('qrModalSubtitle').textContent = `Cliente: ${c.name}`;
+          amtInput.value = Number(c.debt) > 0 ? Number(c.debt) : '';
+          clearBtn.classList.toggle('hidden', !(Number(c.debt) > 0));
+        }
+      } else {
+        document.getElementById('qrModalSubtitle').textContent = 'Transferencia directa sin comisiones';
+        amtInput.value = '';
+        clearBtn.classList.add('hidden');
+      }
+
+      openDialog('qrModal');
+      renderPaymentQRCode();
+    }
+
+    function renderPaymentQRCode() {
+      const box = document.getElementById('qrCodeBox');
+      const amt = Number(document.getElementById('qrAmountInput').value) || 0;
+      const alias = settings.paymentAlias || 'sin-alias';
+      const holder = settings.paymentHolder || settings.businessName || 'Lavadero';
+      const payload = amt > 0
+        ? `Transferencia a Alias: ${alias} | Titular: ${holder} | Monto: ${formatARS(amt)}`
+        : `Transferencia a Alias: ${alias} | Titular: ${holder}`;
+      renderQRCodeInto(box, payload);
+    }
+
+    function openTurneroQRModal() {
+      activeQRClientId = null;
+      document.getElementById('qrAmountControls').classList.add('hidden');
+      document.getElementById('qrAliasBox').classList.add('hidden');
+      document.getElementById('qrModalTitle').textContent = 'QR del Turnero Online';
+      document.getElementById('qrModalSubtitle').textContent = 'Para pegar en el mostrador o compartir';
+      openDialog('qrModal');
+      renderQRCodeInto(document.getElementById('qrCodeBox'), buildBookingUrl());
+    }
+
+    function clearClientDebtFromQR() {
+      const c = clients.find((x) => x.id === activeQRClientId);
+      if (!c) return;
+      c.debt = 0;
+      persistAll(false);
+      renderClientsList();
+      closeDialog('qrModal');
+      showToast('Deuda saldada');
+    }
+
+    function copyQRAlias() {
+      navigator.clipboard?.writeText(settings.paymentAlias || '').then(() => showToast('Alias copiado'));
+    }
+
+    // =========================================================
+    // 11. CRUD DE TARIFAS Y SERVICIOS
+    // =========================================================
+    function openServicesWithGuard() {
+      requireOwnerPin(() => {
+        document.getElementById('togglePublicPricesInModal').checked = settings.showPublicPrices !== false;
+        renderServicesCrud();
+        openDialog('servicesModal');
+      });
+    }
+
+    function togglePublicPrices(show) {
+      settings.showPublicPrices = !!show;
+      persistAll(false);
+      publishPublicBusinessConfig();
+      showToast(show ? 'Tarifas visibles en turnero' : 'Tarifas ocultas en turnero');
+    }
+
+    function renderServicesCrud() {
+      const list = document.getElementById('servicesCrudList');
+      list.innerHTML = services.map((s) => `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-extrabold text-slate-900 truncate">${escapeHTML(s.name)}</p>
+            <p class="text-[11px] text-slate-500">${escapeHTML(s.type)}</p>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <input type="number" min="0" step="100" value="${Number(s.price) || 0}" onchange="updateServicePrice('${escapeHTML(s.id)}', this.value)" class="w-24 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-extrabold text-right">
+            <button type="button" onclick="deleteService('${escapeHTML(s.id)}')" class="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addNewService(e) {
+      e.preventDefault();
+      const name = document.getElementById('newSrvName').value.trim();
+      const type = document.getElementById('newSrvType').value;
+      const price = Math.max(0, Number(document.getElementById('newSrvPrice').value) || 0);
+      if (!name) return;
+      services.push({ id: 'srv_' + Date.now(), name, type, price, active: true });
+      document.getElementById('newSrvName').value = '';
+      document.getElementById('newSrvPrice').value = '';
+      persistAll(false);
+      publishPublicBusinessConfig();
+      renderServicesCrud();
+      showToast('Servicio agregado');
+    }
+
+    function updateServicePrice(id, val) {
+      const s = services.find((x) => x.id === id);
+      if (!s) return;
+      s.price = Math.max(0, Number(val) || 0);
+      persistAll(false);
+      publishPublicBusinessConfig();
+      showToast('Precio actualizado');
+    }
+
+    function deleteService(id) {
+      services = services.filter((x) => x.id !== id);
+      persistAll(false);
+      publishPublicBusinessConfig();
+      renderServicesCrud();
+      showToast('Servicio eliminado');
+    }
+
+    // =========================================================
+    // 12. CONFIGURACIÓN DEL LAVADERO & HORARIOS POR DÍA
+    // =========================================================
+    function openSettingsWithGuard() {
+      requireOwnerPin(() => {
+        populateSettingsForm();
+        switchSettingsTab('general');
+        openDialog('settingsModal');
+      });
+    }
+
+    function switchSettingsTab(tab) {
+      document.querySelectorAll('.stab-panel').forEach((p) => p.classList.add('hidden'));
+      document.getElementById('stab-' + tab).classList.remove('hidden');
+      document.querySelectorAll('.stab-btn').forEach((b) => {
+        const active = b.dataset.stab === tab;
+        b.className = active
+          ? 'stab-btn px-3 py-2 text-xs font-bold border-b-2 border-sky-600 text-sky-700 whitespace-nowrap'
+          : 'stab-btn px-3 py-2 text-xs font-bold border-b-2 border-transparent text-slate-600 whitespace-nowrap';
+      });
+      if (tab === 'security') renderSecurityAlerts();
+    }
+
+    function populateSettingsForm() {
+      document.getElementById('setBizName').value = settings.businessName || '';
+      document.getElementById('setBizId').value = settings.businessId || '';
+      document.getElementById('setBizAddress').value = settings.businessAddress || '';
+      document.getElementById('setWaPhone').value = settings.whatsappPhone || '';
+      document.getElementById('setAlias').value = settings.paymentAlias || '';
+      document.getElementById('setHolder').value = settings.paymentHolder || '';
+
+      const logoPrev = document.getElementById('settingsLogoPreview');
+      if (isValidSafeImageSrc(settings.businessLogo)) {
+        logoPrev.innerHTML = `<img src="${escapeHTML(settings.businessLogo)}" alt="Logo" class="w-full h-full object-cover">`;
+      } else {
+        logoPrev.innerHTML = '<span class="text-xs font-bold text-slate-400">LOGO</span>';
+      }
+
+      document.getElementById('setBookingEnabled').checked = settings.bookingEnabled !== false;
+      document.getElementById('setCapacity').value = String(settings.bookingCapacity || 1);
+      document.getElementById('setSlotMinutes').value = String(settings.bookingSlotMinutes || 45);
+
+      renderWeeklyScheduleEditor();
+
+      document.getElementById('setLoyaltyEnabled').checked = settings.loyaltyEnabled !== false;
+      document.getElementById('setLoyaltyTarget').value = settings.loyaltyTarget || 6;
+      document.getElementById('setLoyaltyExpiryDays').value = settings.loyaltyExpiryDays || 60;
+      document.getElementById('setLoyaltyReward').value = settings.loyaltyReward || '';
+      document.getElementById('setWelcomeTpl').value = settings.welcomeTemplate || DEFAULT_SETTINGS.welcomeTemplate;
+      document.getElementById('setReadyTpl').value = settings.readyTemplate || DEFAULT_SETTINGS.readyTemplate;
+
+      document.getElementById('setPinEnabled').checked = !!settings.pinEnabled;
+      document.getElementById('setOwnerPin').value = '';
+      document.getElementById('setMasterKey').value = '';
+      document.getElementById('pinSavedHint').textContent = settings.ownerPinHash
+        ? 'Ya tenés un PIN y Clave Maestra guardados. Dejalos en blanco si no querés cambiarlos.'
+        : 'Definí tu PIN y Clave Maestra si activás la protección.';
+    }
+
+    function renderWeeklyScheduleEditor() {
+      const box = document.getElementById('weeklyScheduleEditor');
+      const order = [1, 2, 3, 4, 5, 6, 0];
+      box.innerHTML = order.map((dayIdx) => {
+        const d = settings.weeklySchedule[dayIdx] || { enabled: false, start: '08:30', end: '18:00', hasSplit: false, start2: '15:00', end2: '19:30' };
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <label class="flex items-center gap-2 text-xs font-extrabold text-slate-900 cursor-pointer">
+                <input type="checkbox" id="sch_en_${dayIdx}" ${d.enabled ? 'checked' : ''} onchange="toggleScheduleDayFields(${dayIdx})" class="w-4 h-4 accent-sky-600">
+                <span>${DAY_NAMES[dayIdx]}</span>
+              </label>
+              <label class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 cursor-pointer">
+                <input type="checkbox" id="sch_split_${dayIdx}" ${d.hasSplit ? 'checked' : ''} onchange="toggleScheduleSplitFields(${dayIdx})" class="w-3.5 h-3.5 accent-sky-600">
+                <span>Horario cortado</span>
+              </label>
+            </div>
+            <div id="sch_body_${dayIdx}" class="${d.enabled ? '' : 'opacity-40 pointer-events-none'} space-y-1.5">
+              <div class="grid grid-cols-2 gap-2 items-center">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-500 w-10">Abre:</span>
+                  <input type="time" id="sch_s1_${dayIdx}" value="${escapeHTML(d.start)}" class="flex-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold">
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-500 w-10">Cierra:</span>
+                  <input type="time" id="sch_e1_${dayIdx}" value="${escapeHTML(d.end)}" class="flex-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold">
+                </div>
+              </div>
+              <div id="sch_t2_${dayIdx}" class="${d.hasSplit ? 'grid' : 'hidden'} grid-cols-2 gap-2 items-center pt-1 border-t border-slate-200/70">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-500 w-10">Tarde:</span>
+                  <input type="time" id="sch_s2_${dayIdx}" value="${escapeHTML(d.start2 || '15:00')}" class="flex-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold">
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-slate-500 w-10">Cierra:</span>
+                  <input type="time" id="sch_e2_${dayIdx}" value="${escapeHTML(d.end2 || '19:30')}" class="flex-1 px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold">
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleScheduleDayFields(dayIdx) {
+      const enabled = document.getElementById(`sch_en_${dayIdx}`).checked;
+      document.getElementById(`sch_body_${dayIdx}`).className = enabled ? 'space-y-1.5' : 'opacity-40 pointer-events-none space-y-1.5';
+    }
+
+    function toggleScheduleSplitFields(dayIdx) {
+      const split = document.getElementById(`sch_split_${dayIdx}`).checked;
+      document.getElementById(`sch_t2_${dayIdx}`).classList.toggle('hidden', !split);
+      document.getElementById(`sch_t2_${dayIdx}`).classList.toggle('grid', split);
+    }
+
+    let logoNeedsCloudSync = false;
+
+    function handleLogoUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxSide = 96;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.62);
+          settings.businessLogo = dataUrl;
+          logoNeedsCloudSync = true;
+          document.getElementById('settingsLogoPreview').innerHTML = `<img src="${escapeHTML(dataUrl)}" alt="Logo" class="w-full h-full object-cover">`;
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeLogo() {
+      settings.businessLogo = '';
+      logoNeedsCloudSync = true;
+      document.getElementById('settingsLogoPreview').innerHTML = '<span class="text-xs font-bold text-slate-400">LOGO</span>';
+    }
+
+    async function saveSettingsForm(e) {
+      e.preventDefault();
+      const rawBizId = document.getElementById('setBizId').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      if (rawBizId.length < 3) {
+        alert('El Código Único del local debe tener al menos 3 caracteres.');
+        return;
+      }
+
+      const wantPin = document.getElementById('setPinEnabled').checked;
+      const newPin = document.getElementById('setOwnerPin').value.trim();
+      const newMaster = document.getElementById('setMasterKey').value.trim();
+
+      if (wantPin) {
+        if (!settings.ownerPinHash && !/^\d{4,6}$/.test(newPin)) {
+          alert('Para activar la protección, ingresá un PIN de 4 a 6 números.');
+          switchSettingsTab('security');
+          return;
+        }
+        if (newPin && !/^\d{4,6}$/.test(newPin)) {
+          alert('El PIN debe tener entre 4 y 6 números.');
+          switchSettingsTab('security');
+          return;
+        }
+        if (!settings.masterKeyHash && newMaster.length < 4) {
+          alert('Para activar el PIN, definí también una Clave Maestra de Rescate (mínimo 4 caracteres).');
+          switchSettingsTab('security');
+          return;
+        }
+      }
+
+      if (newPin) settings.ownerPinHash = await hashSecret(newPin);
+      if (newMaster) settings.masterKeyHash = await hashSecret(newMaster);
+      settings.pinEnabled = wantPin;
+      if (!wantPin) ownerUnlockedInSession = true;
+
+      settings.businessName = document.getElementById('setBizName').value.trim() || 'Lavadero · Autos & Motos';
+      settings.businessId = rawBizId;
+      settings.businessAddress = document.getElementById('setBizAddress').value.trim();
+      settings.whatsappPhone = formatArgentineWhatsApp(document.getElementById('setWaPhone').value);
+      settings.paymentAlias = document.getElementById('setAlias').value.trim();
+      settings.paymentHolder = document.getElementById('setHolder').value.trim();
+      settings.bookingEnabled = document.getElementById('setBookingEnabled').checked;
+      settings.bookingCapacity = Math.max(1, parseInt(document.getElementById('setCapacity').value, 10) || 1);
+      settings.bookingSlotMinutes = Math.max(15, parseInt(document.getElementById('setSlotMinutes').value, 10) || 45);
+
+      for (let d = 0; d <= 6; d++) {
+        settings.weeklySchedule[d] = {
+          enabled: document.getElementById(`sch_en_${d}`).checked,
+          start: document.getElementById(`sch_s1_${d}`).value || '08:30',
+          end: document.getElementById(`sch_e1_${d}`).value || '13:00',
+          hasSplit: document.getElementById(`sch_split_${d}`).checked,
+          start2: document.getElementById(`sch_s2_${d}`).value || '15:00',
+          end2: document.getElementById(`sch_e2_${d}`).value || '19:30'
+        };
+      }
+
+      settings.loyaltyEnabled = document.getElementById('setLoyaltyEnabled').checked;
+      settings.loyaltyTarget = Math.max(2, parseInt(document.getElementById('setLoyaltyTarget').value, 10) || 6);
+      settings.loyaltyExpiryDays = Math.max(7, parseInt(document.getElementById('setLoyaltyExpiryDays').value, 10) || 60);
+      settings.loyaltyReward = document.getElementById('setLoyaltyReward').value.trim() || '1 Lavado Gratis';
+      settings.welcomeTemplate = cleanWhatsAppText(document.getElementById('setWelcomeTpl').value);
+      settings.readyTemplate = cleanWhatsAppText(document.getElementById('setReadyTpl').value);
+
+      persistAll(false);
+      renderHeaderBrand();
+      renderClientsList();
+      closeDialog('settingsModal');
+      await publishPublicBusinessConfig();
+      showToast('Configuración guardada y sincronizada');
+    }
+
+    // =========================================================
+    // 13. MOTOR DE HORARIOS, NUBE KV MULTI-LAVADERO Y TURNERO
+    // =========================================================
+    function timeToMinutes(hhmm) {
+      const [h, m] = String(hhmm || '00:00').split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    }
+
+    function minutesToTime(totalMins) {
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function getDayOfWeekFromDateStr(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    }
+
+    function generateHoursForDate(dateStr, cfg) {
+      const dow = getDayOfWeekFromDateStr(dateStr);
+      const dayCfg = cfg.weeklySchedule?.[dow];
+      if (!dayCfg || !dayCfg.enabled) return [];
+      const step = Math.max(15, Number(cfg.bookingSlotMinutes) || 45);
+      const slots = [];
+
+      const pushRange = (sStr, eStr) => {
+        const sMin = timeToMinutes(sStr);
+        const eMin = timeToMinutes(eStr);
+        for (let t = sMin; t + step <= eMin; t += step) {
+          slots.push(minutesToTime(t));
+        }
+      };
+
+      pushRange(dayCfg.start, dayCfg.end);
+      if (dayCfg.hasSplit && dayCfg.start2 && dayCfg.end2) {
+        pushRange(dayCfg.start2, dayCfg.end2);
+      }
+      return slots;
+    }
+
+    function formatScheduleSummary(dateStr, cfg) {
+      const dow = getDayOfWeekFromDateStr(dateStr);
+      const d = cfg.weeklySchedule?.[dow];
+      if (!d || !d.enabled) return 'Cerrado este día';
+      return d.hasSplit ? `${d.start}–${d.end} y ${d.start2}–${d.end2}` : `${d.start}–${d.end}`;
+    }
+
+    const KV_CHUNK_SIZE = 180;
+    const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    function toBase64Url(str) {
+      const b64 = btoa(unescape(encodeURIComponent(str)));
+      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function fromBase64Url(b64url) {
+      let b64 = String(b64url || '').replace(/"/g, '').trim().replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return decodeURIComponent(escape(atob(b64)));
+    }
+
+    async function kvFetchWithRetry(url, options, retries = 2) {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const res = await fetch(url, options);
+        if (res.ok) return res;
+        if ((res.status === 503 || res.status === 429) && attempt < retries) {
+          await sleepMs(260 * (attempt + 1));
+          continue;
+        }
+        return res;
+      }
+    }
+
+    async function kvGetRaw(key) {
+      const url = `${CLOUD_KV_BASE}/GetValue/${CLOUD_KV_APP_KEY}/${encodeURIComponent(key)}?t=${Date.now()}`;
+      const res = await kvFetchWithRetry(url, { cache: 'no-store' });
+      if (!res || !res.ok) throw new Error('KV Get error ' + (res?.status || 'net'));
+      const txt = (await res.text()).replace(/^"|"$/g, '').trim();
+      if (!txt || txt === 'null') return null;
+      return txt;
+    }
+
+    async function kvSetRaw(key, safeVal) {
+      const url = `${CLOUD_KV_BASE}/UpdateValue/${CLOUD_KV_APP_KEY}/${encodeURIComponent(key)}/${safeVal}`;
+      const res = await kvFetchWithRetry(url, { method: 'POST' });
+      if (!res || !res.ok) throw new Error('KV Update error ' + (res?.status || 'net'));
+      return true;
+    }
+
+    async function kvSetChunked(key, obj) {
+      const encoded = toBase64Url(JSON.stringify(obj));
+      if (encoded.length <= KV_CHUNK_SIZE) {
+        await kvSetRaw(key, 'S_' + encoded);
+        return true;
+      }
+      const chunks = [];
+      for (let i = 0; i < encoded.length; i += KV_CHUNK_SIZE) {
+        chunks.push(encoded.slice(i, i + KV_CHUNK_SIZE));
+      }
+      for (let idx = 0; idx < chunks.length; idx++) {
+        await kvSetRaw(`${key}_${idx}`, chunks[idx]);
+        if (idx < chunks.length - 1) await sleepMs(70);
+      }
+      await kvSetRaw(key, 'M_' + chunks.length);
+      return true;
+    }
+
+    async function kvGetChunked(key) {
+      const head = await kvGetRaw(key);
+      if (!head) return null;
+      if (head.startsWith('S_')) {
+        return JSON.parse(fromBase64Url(head.slice(2)));
+      }
+      if (!head.startsWith('M_')) return null;
+      const count = parseInt(head.slice(2), 10);
+      if (!count || count < 1 || count > 80) return null;
+      const parts = [];
+      for (let idx = 0; idx < count; idx++) {
+        const p = await kvGetRaw(`${key}_${idx}`);
+        if (!p) return null;
+        parts.push(p);
+        if (idx < count - 1) await sleepMs(50);
+      }
+      return JSON.parse(fromBase64Url(parts.join('')));
+    }
+
+    function buildPublicConfigPayload(includeLogo = false) {
+      return {
+        businessId: settings.businessId,
+        businessName: settings.businessName,
+        businessAddress: settings.businessAddress,
+        businessLogo: includeLogo ? (settings.businessLogo || '') : '',
+        whatsappPhone: settings.whatsappPhone,
+        showPublicPrices: settings.showPublicPrices !== false,
+        bookingEnabled: settings.bookingEnabled !== false,
+        bookingCapacity: Number(settings.bookingCapacity) || 1,
+        bookingSlotMinutes: Number(settings.bookingSlotMinutes) || 45,
+        weeklySchedule: settings.weeklySchedule,
+        services: services.filter((s) => s.active !== false)
+      };
+    }
+
+    async function publishPublicBusinessConfig() {
+      try {
+        const localFull = buildPublicConfigPayload(true);
+        localStorage.setItem('lavadero_pubcfg_' + settings.businessId, JSON.stringify(localFull));
+        const lightCfg = buildPublicConfigPayload(false);
+        await kvSetChunked(`lav_cfg_${settings.businessId}`, lightCfg);
+        localStorage.setItem('lavadero_cfgsynced_' + settings.businessId, '1');
+        if (logoNeedsCloudSync || !localStorage.getItem('lavadero_logosynced_' + settings.businessId)) {
+          await kvSetChunked(`lav_logo_${settings.businessId}`, { logo: settings.businessLogo || '' });
+          localStorage.setItem('lavadero_logosynced_' + settings.businessId, '1');
+          logoNeedsCloudSync = false;
+        }
+      } catch (err) {
+        console.warn('No se pudo publicar config pública en KV:', err);
+      }
+    }
+
+    async function fetchPublicBusinessConfig(bizId) {
+      try {
+        const remote = await kvGetChunked(`lav_cfg_${bizId}`);
+        if (remote && remote.businessName) {
+          try {
+            const remoteLogo = await kvGetChunked(`lav_logo_${bizId}`);
+            if (remoteLogo && typeof remoteLogo.logo === 'string') {
+              remote.businessLogo = remoteLogo.logo;
+            }
+          } catch (_) {}
+          localStorage.setItem('lavadero_pubcfg_' + bizId, JSON.stringify(remote));
+          return remote;
+        }
+      } catch (err) {
+        console.warn('Usando caché local de config:', err);
+      }
+      const cached = JSON.parse(localStorage.getItem('lavadero_pubcfg_' + bizId) || 'null');
+      if (cached) return cached;
+      return buildPublicConfigPayload(true);
+    }
+
+    async function fetchCloudDay(bizId, dateStr) {
+      const dKey = dateStr.replace(/-/g, '');
+      const kvKey = `lav_d_${bizId}_${dKey}`;
+      try {
+        const parsed = await kvGetChunked(kvKey);
+        const dayObj = parsed && typeof parsed === 'object'
+          ? Object.assign({ closed: false, blockedHours: [], slots: {} }, parsed)
+          : { closed: false, blockedHours: [], slots: {} };
+        localStorage.setItem(LS_KEYS.cloudDayPrefix + kvKey, JSON.stringify(dayObj));
+        return dayObj;
+      } catch (err) {
+        const cached = JSON.parse(localStorage.getItem(LS_KEYS.cloudDayPrefix + kvKey) || 'null');
+        return cached || { closed: false, blockedHours: [], slots: {} };
+      }
+    }
+
+    async function saveCloudDay(bizId, dateStr, dayObj) {
+      const dKey = dateStr.replace(/-/g, '');
+      const kvKey = `lav_d_${bizId}_${dKey}`;
+      localStorage.setItem(LS_KEYS.cloudDayPrefix + kvKey, JSON.stringify(dayObj));
+      await kvSetChunked(kvKey, dayObj);
+    }
+
+    // =========================================================
+    // 14. TURNERO ONLINE DEL CLIENTE
+    // =========================================================
+    let bookingState = {
+      cfg: null,
+      vehicleType: 'Auto',
+      selectedServiceId: null,
+      selectedDate: getArgTodayStr(),
+      selectedHour: null,
+      dayObj: { closed: false, blockedHours: [], slots: {} }
+    };
+
+    async function initClientBookingView(bizId, isPreview = false) {
+      document.getElementById('adminView').classList.add('hidden');
+      document.getElementById('loyaltyPassView').classList.add('hidden');
+      document.getElementById('clientBookingView').classList.remove('hidden');
+      document.getElementById('bookingPreviewBanner').classList.toggle('hidden', !isPreview);
+
+      const cfg = isPreview ? buildPublicConfigPayload(true) : await fetchPublicBusinessConfig(bizId || settings.businessId);
+      bookingState.cfg = cfg;
+      bookingState.selectedHour = null;
+
+      document.getElementById('bookingBizTitle').textContent = cfg.businessName || 'Lavadero';
+      document.getElementById('bookingBizAddress').textContent = cfg.businessAddress || '';
+      const logoBox = document.getElementById('bookingLogoContainer');
+      if (isValidSafeImageSrc(cfg.businessLogo)) {
+        logoBox.innerHTML = `<img src="${escapeHTML(cfg.businessLogo)}" alt="Logo" class="w-full h-full object-cover">`;
+      } else {
+        logoBox.innerHTML = `<svg class="w-7 h-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" /></svg>`;
+      }
+
+      if (cfg.bookingEnabled === false) {
+        document.getElementById('bookingForm').classList.add('hidden');
+        document.getElementById('bookingDisabledState').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('bookingForm').classList.remove('hidden');
+      document.getElementById('bookingDisabledState').classList.add('hidden');
+
+      renderBookingServices();
+      renderBookingDays();
+      await selectBookingDay(bookingState.selectedDate);
+    }
+
+    function openBookingPreview() {
+      initClientBookingView(settings.businessId, true);
+    }
+
+    function exitBookingPreview() {
+      document.getElementById('clientBookingView').classList.add('hidden');
+      document.getElementById('adminView').classList.remove('hidden');
+    }
+
+    function selectBookingVehicleType(vType) {
+      bookingState.vehicleType = vType;
+      document.querySelectorAll('.vtype-btn').forEach((btn) => {
+        const active = btn.dataset.vtype === vType;
+        btn.className = active
+          ? 'vtype-btn py-2.5 px-2 rounded-xl border text-xs font-bold transition-colors bg-sky-600 border-sky-600 text-white'
+          : 'vtype-btn py-2.5 px-2 rounded-xl border text-xs font-bold transition-colors bg-white border-slate-200 text-slate-700';
+      });
+      renderBookingServices();
+      updateBookingSummary();
+    }
+
+    function renderBookingServices() {
+      const cfg = bookingState.cfg;
+      const list = (cfg.services || []).filter((s) => s.type === bookingState.vehicleType || s.type === 'Todos');
+      const box = document.getElementById('bookingServicesContainer');
+      if (!list.length) {
+        box.innerHTML = '<p class="text-xs text-slate-500">Sin servicios cargados para esta categoría.</p>';
+        bookingState.selectedServiceId = null;
+        return;
+      }
+      if (!list.some((s) => s.id === bookingState.selectedServiceId)) {
+        bookingState.selectedServiceId = list[0].id;
+      }
+      box.innerHTML = list.map((s) => {
+        const active = s.id === bookingState.selectedServiceId;
+        const priceTag = cfg.showPublicPrices !== false
+          ? `<span class="text-xs font-extrabold ${active ? 'text-sky-700' : 'text-slate-900'}">${formatARS(s.price)}</span>`
+          : '';
+        return `
+          <button type="button" onclick="selectBookingService('${escapeHTML(s.id)}')" class="w-full px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-colors ${active ? 'bg-sky-50 border-sky-600' : 'bg-white border-slate-200 hover:bg-slate-50'}">
+            <span class="text-xs font-bold ${active ? 'text-sky-950' : 'text-slate-800'}">${escapeHTML(s.name)}</span>
+            ${priceTag}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectBookingService(id) {
+      bookingState.selectedServiceId = id;
+      renderBookingServices();
+      updateBookingSummary();
+    }
+
+    function renderBookingDays() {
+      const today = getArgTodayStr();
+      const box = document.getElementById('bookingDaysContainer');
+      const cfg = bookingState.cfg;
+      let html = '';
+
+      for (let i = 0; i < 14; i++) {
+        const dStr = addDaysToDateStr(today, i);
+        const dow = getDayOfWeekFromDateStr(dStr);
+        const dayOpen = cfg.weeklySchedule?.[dow]?.enabled;
+        const active = dStr === bookingState.selectedDate;
+        const dayNum = dStr.slice(8, 10);
+        const label = i === 0 ? 'Hoy' : (i === 1 ? 'Mañana' : DAY_SHORT[dow]);
+        html += `
+          <button type="button" onclick="selectBookingDay('${dStr}')" class="shrink-0 px-3 py-2 rounded-xl border text-center min-w-[66px] transition-colors ${active ? 'bg-slate-900 border-slate-900 text-white' : (dayOpen ? 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50' : 'bg-slate-100 border-slate-200 text-slate-400')}">
+            <span class="block text-[10px] font-bold uppercase">${label}</span>
+            <span class="block text-sm font-extrabold">${dayNum}</span>
+          </button>
+        `;
+      }
+      box.innerHTML = html;
+    }
+
+    async function selectBookingDay(dateStr) {
+      bookingState.selectedDate = dateStr;
+      bookingState.selectedHour = null;
+      renderBookingDays();
+      document.getElementById('bookingDayScheduleHint').textContent = formatScheduleSummary(dateStr, bookingState.cfg);
+      const hoursBox = document.getElementById('bookingHoursContainer');
+      hoursBox.innerHTML = '<div class="col-span-3 py-4 text-center text-xs text-slate-500">Consultando disponibilidad...</div>';
+      bookingState.dayObj = await fetchCloudDay(bookingState.cfg.businessId, dateStr);
+      renderBookingHours();
+      updateBookingSummary();
+    }
+
+    async function refreshBookingDay() {
+      await selectBookingDay(bookingState.selectedDate);
+      showToast('Horarios actualizados');
+    }
+
+    function renderBookingHours() {
+      const cfg = bookingState.cfg;
+      const hoursBox = document.getElementById('bookingHoursContainer');
+      const dayObj = bookingState.dayObj;
+      const allHours = generateHoursForDate(bookingState.selectedDate, cfg);
+      const cap = Math.max(1, Number(cfg.bookingCapacity) || 1);
+      const isToday = bookingState.selectedDate === getArgTodayStr();
+      const nowMins = getArgNowMinutes();
+
+      if (dayObj.closed || !allHours.length) {
+        hoursBox.innerHTML = '<div class="col-span-3 bg-slate-100 border border-slate-200 rounded-xl p-4 text-center text-xs font-bold text-slate-500">Sin atención / Día cerrado</div>';
+        return;
+      }
+
+      hoursBox.innerHTML = allHours.map((h) => {
+        const list = dayObj.slots?.[h] || [];
+        const manuallyBlocked = (dayObj.blockedHours || []).includes(h);
+        const pastToday = isToday && timeToMinutes(h) <= nowMins + 10;
+        const freeSpots = Math.max(0, cap - list.length);
+        const occupied = manuallyBlocked || freeSpots <= 0 || pastToday;
+        const active = bookingState.selectedHour === h;
+
+        if (occupied) {
+          const reason = pastToday ? 'Pasado' : '🔒 Ocupado';
+          return `
+            <button type="button" disabled class="py-2.5 px-2 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed text-center">
+              <span class="block text-xs font-bold line-through">${h}</span>
+              <span class="block text-[10px] font-semibold">${reason}</span>
+            </button>
+          `;
+        }
+
+        const spotLabel = cap > 1 ? `${freeSpots} lug.` : 'Libre';
+        return `
+          <button type="button" onclick="selectBookingHour('${h}')" class="py-2.5 px-2 rounded-xl border text-center transition-colors ${active ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white border-slate-200 text-slate-900 hover:border-sky-500'}">
+            <span class="block text-xs font-extrabold">${h}</span>
+            <span class="block text-[10px] font-semibold ${active ? 'text-sky-100' : 'text-emerald-600'}">${spotLabel}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectBookingHour(h) {
+      bookingState.selectedHour = h;
+      renderBookingHours();
+      updateBookingSummary();
+    }
+
+    function updateBookingSummary() {
+      const srv = (bookingState.cfg?.services || []).find((s) => s.id === bookingState.selectedServiceId);
+      const txtEl = document.getElementById('bookingSummaryText');
+      if (!bookingState.selectedHour) {
+        txtEl.textContent = `Vehículo: ${bookingState.vehicleType}${srv ? ' · ' + srv.name : ''}. Elegí un horario disponible.`;
+        return;
+      }
+      const priceStr = (srv && bookingState.cfg.showPublicPrices !== false) ? ` (${formatARS(srv.price)})` : '';
+      txtEl.textContent = `${formatDateAR(bookingState.selectedDate)} a las ${bookingState.selectedHour} hs · ${bookingState.vehicleType} · ${srv ? srv.name : 'Lavado'}${priceStr}`;
+    }
+
+    async function submitClientBooking(e) {
+      e.preventDefault();
+      const form = e.target;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      if (!bookingState.selectedHour) {
+        alert('Por favor elegí un horario disponible.');
+        return;
+      }
+
+      const btn = document.getElementById('btnConfirmClientBooking');
+      btn.disabled = true;
+      btn.textContent = 'Verificando lugar en la nube...';
+
+      try {
+        const cfg = bookingState.cfg;
+        const freshDay = await fetchCloudDay(cfg.businessId, bookingState.selectedDate);
+        const cap = Math.max(1, Number(cfg.bookingCapacity) || 1);
+        const slotList = freshDay.slots?.[bookingState.selectedHour] || [];
+        const manuallyBlocked = (freshDay.blockedHours || []).includes(bookingState.selectedHour);
+
+        if (freshDay.closed || manuallyBlocked || slotList.length >= cap) {
+          alert('Ese horario acaba de ser ocupado por otro cliente. Elegí otro disponible.');
+          bookingState.dayObj = freshDay;
+          bookingState.selectedHour = null;
+          renderBookingHours();
+          updateBookingSummary();
+          return;
+        }
+
+        const cName = document.getElementById('bookingClientName').value.trim();
+        const cPhone = formatArgentineWhatsApp(document.getElementById('bookingClientPhone').value);
+        const cModel = document.getElementById('bookingVehicleModel').value.trim();
+        const cPlate = document.getElementById('bookingPlate').value.trim().toUpperCase();
+        const srv = (cfg.services || []).find((s) => s.id === bookingState.selectedServiceId);
+
+        if (!freshDay.slots) freshDay.slots = {};
+        if (!freshDay.slots[bookingState.selectedHour]) freshDay.slots[bookingState.selectedHour] = [];
+        freshDay.slots[bookingState.selectedHour].push({
+          id: 'b_' + Date.now(),
+          n: cName,
+          p: cPhone,
+          v: bookingState.vehicleType,
+          m: cModel,
+          pat: cPlate,
+          s: srv ? srv.name : 'Lavado',
+          pr: srv ? Number(srv.price) : 0,
+          t: 'client'
+        });
+
+        await saveCloudDay(cfg.businessId, bookingState.selectedDate, freshDay);
+        bookingState.dayObj = freshDay;
+
+        const priceLine = (srv && cfg.showPublicPrices !== false) ? `\n• Tarifa estimada: ${formatARS(srv.price)}` : '';
+        const waMsg = cleanWhatsAppText(
+          `Hola *${cfg.businessName}*, reserve turno online:\n` +
+          `• Nombre: ${cName}\n` +
+          `• Vehiculo: ${bookingState.vehicleType} ${cModel} ${cPlate ? '(' + cPlate + ')' : ''}\n` +
+          `• Servicio: ${srv ? srv.name : 'Lavado'}${priceLine}\n` +
+          `• Dia y hora: ${formatDateAR(bookingState.selectedDate)} a las ${bookingState.selectedHour} hs`
+        );
+
+        const waUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(formatArgentineWhatsApp(cfg.whatsappPhone))}&text=${encodeURIComponent(waMsg)}`;
+        document.getElementById('bookingConfirmedDetails').textContent =
+          `${cName} · ${formatDateAR(bookingState.selectedDate)} a las ${bookingState.selectedHour} hs · ${bookingState.vehicleType}`;
+        document.getElementById('bookingConfirmedWaBtn').href = waUrl;
+        document.getElementById('bookingForm').classList.add('hidden');
+        document.getElementById('bookingConfirmedCard').classList.remove('hidden');
+        window.open(waUrl, '_blank', 'noopener');
+      } catch (err) {
+        alert('No pudimos conectar con el turnero en la nube. Revisá tu conexión a internet e intentá de nuevo.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirmar Turno y Avisar por WhatsApp';
+      }
+    }
+
+    function resetBookingFormAfterConfirm() {
+      document.getElementById('bookingConfirmedCard').classList.add('hidden');
+      document.getElementById('bookingForm').classList.remove('hidden');
+      selectBookingDay(bookingState.selectedDate);
+    }
+
+    // =========================================================
+    // 15. CONTROL MANUAL DE AGENDA DEL DUEÑO (📅 AGENDA)
+    // =========================================================
+    let ownerAgendaState = {
+      selectedDate: getArgTodayStr(),
+      dayObj: { closed: false, blockedHours: [], slots: {} }
+    };
+
+    async function openOwnerAgendaModal() {
+      document.getElementById('ownerAgendaCapInfo').textContent =
+        `Capacidad actual: ${settings.bookingCapacity || 1} vehículo(s) por horario`;
+      openDialog('ownerAgendaModal');
+      renderOwnerAgendaDays();
+      await selectOwnerAgendaDay(ownerAgendaState.selectedDate);
+    }
+
+    function renderOwnerAgendaDays() {
+      const today = getArgTodayStr();
+      const box = document.getElementById('ownerAgendaDaysContainer');
+      let html = '';
+      for (let i = 0; i < 14; i++) {
+        const dStr = addDaysToDateStr(today, i);
+        const dow = getDayOfWeekFromDateStr(dStr);
+        const active = dStr === ownerAgendaState.selectedDate;
+        const label = i === 0 ? 'Hoy' : (i === 1 ? 'Mañ' : DAY_SHORT[dow]);
+        html += `
+          <button type="button" onclick="selectOwnerAgendaDay('${dStr}')" class="shrink-0 px-3 py-2 rounded-xl border text-center min-w-[60px] ${active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700'}">
+            <span class="block text-[10px] font-bold uppercase">${label}</span>
+            <span class="block text-sm font-extrabold">${dStr.slice(8, 10)}</span>
+          </button>
+        `;
+      }
+      box.innerHTML = html;
+    }
+
+    async function selectOwnerAgendaDay(dateStr) {
+      ownerAgendaState.selectedDate = dateStr;
+      renderOwnerAgendaDays();
+      document.getElementById('ownerAgendaDayScheduleLabel').textContent = formatScheduleSummary(dateStr, settings);
+      document.getElementById('ownerAgendaHoursList').innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Cargando turnos...</p>';
+      ownerAgendaState.dayObj = await fetchCloudDay(settings.businessId, dateStr);
+      renderOwnerAgendaHours();
+    }
+
+    async function refreshOwnerAgendaDay() {
+      await selectOwnerAgendaDay(ownerAgendaState.selectedDate);
+      showToast('Agenda sincronizada');
+    }
+
+    async function toggleCloseWholeDay() {
+      ownerAgendaState.dayObj.closed = !ownerAgendaState.dayObj.closed;
+      await saveCloudDay(settings.businessId, ownerAgendaState.selectedDate, ownerAgendaState.dayObj);
+      renderOwnerAgendaHours();
+      showToast(ownerAgendaState.dayObj.closed ? 'Día cerrado manualmente' : 'Día reabierto');
+    }
+
+    function renderOwnerAgendaHours() {
+      const dayObj = ownerAgendaState.dayObj;
+      const statusLabel = document.getElementById('ownerAgendaDayStatusLabel');
+      const toggleBtn = document.getElementById('btnToggleCloseWholeDay');
+
+      if (dayObj.closed) {
+        statusLabel.textContent = 'Día Cerrado (nadie puede reservar)';
+        statusLabel.className = 'text-xs font-extrabold text-rose-700';
+        toggleBtn.textContent = 'Reabrir día';
+        toggleBtn.className = 'px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold';
+      } else {
+        statusLabel.textContent = 'Día Abierto para Reservas';
+        statusLabel.className = 'text-xs font-extrabold text-emerald-700';
+        toggleBtn.textContent = 'Cerrar día';
+        toggleBtn.className = 'px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold';
+      }
+
+      const hours = generateHoursForDate(ownerAgendaState.selectedDate, settings);
+      const cap = Math.max(1, Number(settings.bookingCapacity) || 1);
+      const box = document.getElementById('ownerAgendaHoursList');
+
+      if (!hours.length) {
+        box.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Este día figura cerrado en tu grilla semanal.</p>';
+        return;
+      }
+
+      box.innerHTML = hours.map((h) => {
+        const list = dayObj.slots?.[h] || [];
+        const isBlocked = (dayObj.blockedHours || []).includes(h);
+        const free = Math.max(0, cap - list.length);
+
+        const bookingsHtml = list.map((b, idx) => `
+          <div class="mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2">
+            <div class="min-w-0 text-xs">
+              <p class="font-extrabold text-slate-900 truncate">${escapeHTML(b.n)} ${b.pat ? `<span class="font-mono text-[10px] text-slate-600">(${escapeHTML(b.pat)})</span>` : ''}</p>
+              <p class="text-[11px] text-slate-600 truncate">${escapeHTML(b.v || '')} ${escapeHTML(b.m || '')} · ${escapeHTML(b.s || '')}</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" onclick="importBookingAsClient('${h}', ${idx})" class="px-2 py-1 rounded bg-sky-600 text-white text-[10px] font-bold" title="Pasar a clientes y sumar lavado">+ Ficha</button>
+              <button type="button" onclick="removeAgendaSlotBooking('${h}', ${idx})" class="px-2 py-1 rounded bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-bold">Liberar</button>
+            </div>
+          </div>
+        `).join('');
+
+        return `
+          <div class="bg-white border border-slate-200 rounded-xl p-3">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-extrabold text-slate-900">${h} hs</span>
+                <span class="text-[11px] font-bold ${isBlocked || free === 0 ? 'text-rose-600' : 'text-emerald-700'}">
+                  ${isBlocked ? '🔒 Bloqueado manual' : `${list.length}/${cap} ocupado(s)`}
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${(!isBlocked && free > 0) ? `<button type="button" onclick="manualBookHour('${h}')" class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold">+ Agendar</button>` : ''}
+                <button type="button" onclick="toggleManualBlockHour('${h}')" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold ${isBlocked ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}">
+                  ${isBlocked ? 'Desbloquear' : 'Bloquear'}
+                </button>
+              </div>
+            </div>
+            ${bookingsHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function toggleManualBlockHour(h) {
+      const d = ownerAgendaState.dayObj;
+      if (!d.blockedHours) d.blockedHours = [];
+      const idx = d.blockedHours.indexOf(h);
+      if (idx === -1) d.blockedHours.push(h);
+      else d.blockedHours.splice(idx, 1);
+      await saveCloudDay(settings.businessId, ownerAgendaState.selectedDate, d);
+      renderOwnerAgendaHours();
+    }
+
+    async function manualBookHour(h) {
+      const name = document.getElementById('manualBookName').value.trim() || 'Turno Mostrador';
+      const veh = document.getElementById('manualBookVehicle').value.trim() || 'Auto';
+      const pat = document.getElementById('manualBookPlate').value.trim().toUpperCase();
+      const d = ownerAgendaState.dayObj;
+      if (!d.slots) d.slots = {};
+      if (!d.slots[h]) d.slots[h] = [];
+      d.slots[h].push({ id: 'm_' + Date.now(), n: name, p: '', v: veh, m: '', pat, s: 'Reserva manual', t: 'owner' });
+      document.getElementById('manualBookName').value = '';
+      document.getElementById('manualBookVehicle').value = '';
+      document.getElementById('manualBookPlate').value = '';
+      await saveCloudDay(settings.businessId, ownerAgendaState.selectedDate, d);
+      renderOwnerAgendaHours();
+      showToast(`Reservado a las ${h} hs`);
+    }
+
+    async function removeAgendaSlotBooking(h, idx) {
+      const d = ownerAgendaState.dayObj;
+      if (!d.slots?.[h]) return;
+      d.slots[h].splice(idx, 1);
+      await saveCloudDay(settings.businessId, ownerAgendaState.selectedDate, d);
+      renderOwnerAgendaHours();
+      showToast('Lugar liberado');
+    }
+
+    function importBookingAsClient(h, idx) {
+      const b = ownerAgendaState.dayObj.slots?.[h]?.[idx];
+      if (!b) return;
+      const existing = clients.find((c) => (b.pat && c.plate === b.pat) || (b.p && c.phone === b.p));
+      if (existing) {
+        closeDialog('ownerAgendaModal');
+        openWashModal(existing.id);
+        return;
+      }
+      const newC = {
+        id: 'c_' + Date.now(),
+        name: b.n || 'Cliente',
+        phone: formatArgentineWhatsApp(b.p || ''),
+        vehicleType: ['Moto', 'Auto', 'Camioneta'].includes(b.v) ? b.v : 'Auto',
+        vehicleModel: b.m || '',
+        plate: b.pat || '',
+        lastWashDate: '',
+        lastService: b.s || '',
+        stamps: 0,
+        totalWashes: 0,
+        debt: 0,
+        notes: ''
+      };
+      clients.unshift(newC);
+      persistAll(false);
+      renderClientsList();
+      closeDialog('ownerAgendaModal');
+      openWashModal(newC.id);
+    }
+
+    // =========================================================
+    // 16. VISTA PASE DE FIDELIDAD PÚBLICO (?fidelidad=1)
+    // =========================================================
+    async function initLoyaltyPassView(params) {
+      document.getElementById('adminView').classList.add('hidden');
+      document.getElementById('clientBookingView').classList.add('hidden');
+      document.getElementById('loyaltyPassView').classList.remove('hidden');
+
+      const bizId = params.get('biz') || settings.businessId;
+      let cfg = null;
+      if (bizId) {
+        try { cfg = await fetchPublicBusinessConfig(bizId); } catch (_) { cfg = null; }
+      }
+
+      const bizName = params.get('l') || cfg?.businessName || 'Lavadero';
+      const clientName = params.get('c') || 'Cliente';
+      const vehicleInfo = params.get('v') || '';
+      const rawStamps = Math.max(0, parseInt(params.get('s'), 10) || 0);
+      const target = Math.max(2, parseInt(params.get('m'), 10) || 6);
+      const reward = params.get('p') || '1 Lavado Gratis';
+      const lastWash = params.get('u') || '';
+      const cadDays = Math.max(7, parseInt(params.get('cad'), 10) || 60);
+      const waPhone = params.get('w') || cfg?.whatsappPhone || '';
+
+      document.getElementById('passBizName').textContent = bizName;
+      document.getElementById('passClientName').textContent = clientName;
+      document.getElementById('passVehicleInfo').textContent = vehicleInfo;
+      document.getElementById('passRewardText').textContent = `Premio al completar: ${reward}`;
+
+      if (cfg && isValidSafeImageSrc(cfg.businessLogo)) {
+        document.getElementById('passLogoContainer').innerHTML = `<img src="${escapeHTML(cfg.businessLogo)}" alt="Logo" class="w-full h-full object-cover">`;
+      }
+
+      const ls = getLoyaltyStatus({ stamps: rawStamps, lastWashDate: lastWash }, { loyaltyEnabled: true, loyaltyTarget: target, loyaltyExpiryDays: cadDays });
+      document.getElementById('passStampsCounter').textContent = `${ls.stamps} / ${target}`;
+
+      const grid = document.getElementById('passStampsGrid');
+      grid.innerHTML = Array.from({ length: target }, (_, i) => {
+        const filled = i < ls.stamps;
+        return `<div class="aspect-square rounded-xl border flex items-center justify-center text-sm font-extrabold ${filled ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white border-slate-300 text-slate-300'}">${filled ? '✓' : (i + 1)}</div>`;
+      }).join('');
+
+      const expBox = document.getElementById('passExpiryBox');
+      if (ls.status === 'expired') {
+        expBox.className = 'rounded-xl p-3 border text-xs font-bold bg-rose-50 border-rose-200 text-rose-800';
+        expBox.textContent = `Tus sellos caducaron por superar los ${cadDays} días sin visitas. ¡Volvé cuando quieras para iniciar una tarjeta nueva!`;
+      } else if (ls.stamps > 0 && ls.expiryDateStr) {
+        expBox.className = ls.status === 'expiring'
+          ? 'rounded-xl p-3 border text-xs font-bold bg-amber-50 border-amber-200 text-amber-900'
+          : 'rounded-xl p-3 border text-xs font-semibold bg-sky-50 border-sky-200 text-sky-900';
+        expBox.textContent = `Vigencia de tus sellos: vencen el ${formatDateAR(ls.expiryDateStr)} (te quedan ${ls.daysLeft} días). Cada lavado renueva la vigencia por ${cadDays} días más.`;
+      } else {
+        expBox.className = 'rounded-xl p-3 border text-xs font-semibold bg-slate-50 border-slate-200 text-slate-600';
+        expBox.textContent = `Sumás 1 sello con cada lavado. Los sellos se mantienen vigentes visitándonos al menos cada ${cadDays} días.`;
+      }
+
+      document.getElementById('passBookBtn').href = `${getPublicBaseUrl()}?reservar=1&biz=${encodeURIComponent(bizId)}`;
+      const waMsg = cleanWhatsAppText(`Hola *${bizName}*, soy ${clientName}. Quiero consultar o sacar turno para lavar mi vehiculo.`);
+      document.getElementById('passWaBtn').href = `https://api.whatsapp.com/send?phone=${encodeURIComponent(formatArgentineWhatsApp(waPhone))}&text=${encodeURIComponent(waMsg)}`;
+    }
+
+    // =========================================================
+    // 17. GOOGLE DRIVE BACKUP & EXPORTACIÓN / RESTAURACIÓN JSON
+    // =========================================================
+    function openBackupModal() {
+      document.getElementById('customDriveWebhookInput').value = settings.driveWebhookUrl === AUTO_DRIVE_WEBHOOK ? '' : (settings.driveWebhookUrl || '');
+      updateBackupBadge();
+      openDialog('backupModal');
+    }
+
+    function updateBackupBadge() {
+      const dot = document.getElementById('backupStatusDot');
+      const txt = document.getElementById('lastBackupText');
+      if (!dot || !txt) return;
+      if (settings.lastBackupDate) {
+        const d = new Date(settings.lastBackupDate);
+        const f = new Intl.DateTimeFormat('es-AR', {
+          timeZone: 'America/Argentina/Buenos_Aires',
+          dateStyle: 'short',
+          timeStyle: 'short',
+          hour12: false
+        }).format(d);
+        txt.textContent = `Última copia en Drive: ${f}`;
+        dot.className = 'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white';
+      } else {
+        txt.textContent = 'Sincronización automática lista';
+      }
+    }
+
+    function saveCustomDriveWebhook() {
+      const url = document.getElementById('customDriveWebhookInput').value.trim();
+      settings.driveWebhookUrl = url || AUTO_DRIVE_WEBHOOK;
+      persistAll(false);
+      showToast(url ? 'Webhook propio guardado' : 'Restaurado Google Drive por defecto');
+    }
+
+    async function syncToGoogleDriveNow(manual = true) {
+      const webhookUrl = settings.driveWebhookUrl || AUTO_DRIVE_WEBHOOK;
+      if (!webhookUrl) return;
+      const btn = document.getElementById('btnSyncNow');
+      const prev = btn ? btn.textContent : '';
+      if (manual && btn) btn.textContent = 'Guardando en Google Drive...';
+
+      try {
+        const backupObj = {
+          app: 'MicroApp Lavadero Autos y Motos',
+          businessId: settings.businessId,
+          businessName: settings.businessName,
+          exportedAt: new Date().toISOString(),
+          settings,
+          services,
+          clients,
+          washesLog: washesLog.slice(0, 300)
+        };
+        const jsonStr = JSON.stringify(backupObj, null, 2);
+        const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+        const sello = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+        const cleanBiz = String(settings.businessName || 'Lavadero').replace(/[^a-zA-Z0-9]/g, '_');
+
+        const payload = {
+          action: 'save',
+          folder: AUTO_DRIVE_FOLDER,
+          folderName: AUTO_DRIVE_FOLDER,
+          filename: `lavadero_backup_${cleanBiz}_${sello}.json`,
+          latest_filename: `lavadero_backup_${cleanBiz}_ACTUAL.json`,
+          mimeType: 'application/json',
+          fileBase64: b64,
+          comercio: settings.businessName || 'Lavadero',
+          timestamp: sello,
+          settings,
+          services,
+          clients
+        };
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        settings.lastBackupDate = new Date().toISOString();
+        persistAll(true);
+        if (manual) showToast('Copia guardada en Google Drive');
+      } catch (err) {
+        if (manual) showToast('Guardado local; se subirá cuando vuelva la conexión');
+      } finally {
+        if (manual && btn) btn.textContent = prev || 'Guardar Copia en Google Drive Ahora';
+      }
+    }
+
+    function downloadBackupJSON() {
+      const payload = {
+        app: 'MicroApp Lavadero Autos y Motos',
+        exportedAt: new Date().toISOString(),
+        settings,
+        services,
+        clients,
+        washesLog
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `respaldo-lavadero-${getArgTodayStr()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Respaldo JSON descargado');
+    }
+
+    function exportCSV() {
+      const headers = ['Nombre', 'Telefono', 'Tipo', 'Modelo', 'Patente', 'Sellos', 'UltimoLavado', 'DeudaARS', 'Notas'];
+      const rows = clients.map((c) => [
+        c.name, c.phone, c.vehicleType, c.vehicleModel, c.plate,
+        getLoyaltyStatus(c).stamps, c.lastWashDate || '', c.debt || 0, (c.notes || '').replace(/[\r\n]+/g, ' ')
+      ].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
+
+      const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `clientes-lavadero-${getArgTodayStr()}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Planilla CSV descargada');
+    }
+
+    function importBackupFileWithGuard(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      requireOwnerPin(() => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data.clients) || !data.settings) {
+              alert('El archivo no corresponde a un respaldo válido del lavadero.');
+              return;
+            }
+            settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+            services = Array.isArray(data.services) ? data.services : services;
+            clients = data.clients;
+            washesLog = Array.isArray(data.washesLog) ? data.washesLog : [];
+            persistAll(true);
+            renderHeaderBrand();
+            renderClientsList();
+            closeDialog('backupModal');
+            showToast('Copia restaurada con éxito');
+          } catch (err) {
+            alert('No se pudo leer el archivo de respaldo.');
+          }
+        };
+        reader.readAsText(file);
+      });
+      event.target.value = '';
+    }
+
+    // =========================================================
+    // 18. ARRANQUE DE LA APLICACIÓN Y SERVICE WORKER PWA
+    // =========================================================
+    (function bootstrap() {
+      initDialogLightDismissFallback();
+      initDeferredFormValidation();
+
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        navigator.serviceWorker.register('./sw.js').catch(() => null);
+      }
+
+      window.addEventListener('online', () => {
+        if (settings.autoSyncDrive) syncToGoogleDriveNow(false);
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('fidelidad') === '1') {
+        initLoyaltyPassView(params);
+        return;
+      }
+      if (params.get('reservar') === '1' || params.get('booking') === 'true') {
+        const bizId = params.get('biz') || settings.businessId;
+        initClientBookingView(bizId, false);
+        return;
+      }
+
+      renderHeaderBrand();
+      renderClientsList();
+      if (!localStorage.getItem('lavadero_cfgsynced_' + settings.businessId)) {
+        publishPublicBusinessConfig();
+      }
+    })();
+  </script>
+</body>
+</html>
