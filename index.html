@@ -2517,16 +2517,26 @@
       return decodeURIComponent(escape(atob(b64)));
     }
 
-    async function kvFetchWithRetry(url, options, retries = 2) {
+    async function kvFetchWithRetry(url, options, retries = 3) {
+      let lastErr = null;
       for (let attempt = 0; attempt <= retries; attempt++) {
-        const res = await fetch(url, options);
-        if (res.ok) return res;
-        if ((res.status === 503 || res.status === 429) && attempt < retries) {
-          await sleepMs(260 * (attempt + 1));
-          continue;
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          if ((res.status === 503 || res.status === 429) && attempt < retries) {
+            await sleepMs(400 * (attempt + 1));
+            continue;
+          }
+          return res;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < retries) {
+            await sleepMs(400 * (attempt + 1));
+            continue;
+          }
         }
-        return res;
       }
+      throw lastErr || new Error('KV network error');
     }
 
     async function kvGetRaw(key) {
@@ -2690,6 +2700,7 @@
         logoBox.innerHTML = `<svg class="w-7 h-7 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-2.5 3.5-5 6.8-5 9.5a5 5 0 0010 0C17 9.8 14.5 6.5 12 3z" /></svg>`;
       }
 
+      document.getElementById('bookingConfirmedCard').classList.add('hidden');
       if (cfg.bookingEnabled === false) {
         document.getElementById('bookingForm').classList.add('hidden');
         document.getElementById('bookingDisabledState').classList.remove('hidden');
@@ -3301,7 +3312,7 @@
       const rows = clients.map((c) => [
         c.name, c.phone, c.vehicleType, c.vehicleModel, c.plate,
         getLoyaltyStatus(c).stamps, c.lastWashDate || '', c.debt || 0, (c.notes || '').replace(/[\r\n]+/g, ' ')
-      ].map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
+      ].map((v) => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`).join(','));
 
       const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
